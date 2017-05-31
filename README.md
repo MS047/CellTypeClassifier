@@ -1,7 +1,7 @@
-					---------- CellTypeClassifier ----------
+					          ---------- XraDataManager ----------
 
 
-Kilosort/phy generated units supervised and unsupervised classification, with the hope to sort them by cell type.
+Kilosort/phy generated extracellular data manager, including supervised and unsupervised classification of units, in order to sort them by cell type.
 
 Kilosort: https://github.com/cortex-lab/KiloSort (M. Pachitariu, Kwikteam)
 Phy: https://github.com/kwikteam/phy (C. Rossant, Kwikteam)
