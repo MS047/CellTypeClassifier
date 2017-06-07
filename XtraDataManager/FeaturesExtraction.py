@@ -18,17 +18,19 @@
 # Then launch python or ipython from any terminal, and "import CellTypeClassifier". Here it is, you can instanciate DataManager by doing "data = DataManager()".
 # Then visualize the Mean Firing Rate, the Instantaneous Firing Rate and the auto/cross correlograms of units thanks to the visualization() method of this instanciation.
 
-# Maxime Beau, 2017-05-10
-
+# Maxime Beau, 2017-05-10 
 
 
 import numpy as np
 from scipy import signal
 import random
 import time
+from time import sleep
+import progressbar
 
 import scipy
 import scipy.stats
+import scipy.io
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
@@ -101,10 +103,10 @@ def _symmetrize_correlograms(correlograms):
 
     return np.dstack((sym, correlograms))
 
-def load_DM(data, filename):
+def load_DM(filename):
 	'''Arguments: "data"=NameOfDataManager, "filename" has to be of the form "xxxxxxx.pkl".'''
-	with open(filename, 'wb') as Input:
-		data = dill.load(Input)
+	with open(filename, 'rb') as Input:
+		return dill.load(Input)
 
 class DataManager():
 	'''Has to be informed of the directory of kilosort output (files reshaped by phy).
@@ -163,24 +165,26 @@ class DataManager():
 		os.chdir(directory)
 		self.__dir__ = directory
 
-	def load_sampleRate(self):
+	def load_sampleRate(self, again=False):
 		'''load_sampleRate() -> .sample_rate: Sampling rate (30Khz)'''
 		try:
 			print("Sample rate already loaded: ", self.sample_rate)
-			if input(" -- Load again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Load again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
 			import params
 			self.sample_rate = params.sample_rate
 			print("Sample rate loaded.")
 		return self.sample_rate
 
-	def load_spsamples(self):
+	def load_spsamples(self, again=False):
 		'''load_spsamples() -> .spike_samples: Spike times in sample units'''
 		try:
 			print("Spike samples already loaded. Array shape:", self.spike_samples.shape)
-			if input(" -- Load again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Load again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
 			self.spike_samples = np.load("spike_times.npy")
 			self.spike_samples = self.spike_samples.flatten()
@@ -188,39 +192,42 @@ class DataManager():
 			print("Spike samples loaded.")
 		return self.spike_samples
 
-	def calcul_sptimes(self):
+	def calcul_sptimes(self, again=False):
 		'''calcul_sptimes() -> .spike_times: Spikes times in seconds'''
 		try:
 			print("Spike times already calculated. Array shape:", self.spike_times.shape)
-			if input(" -- Calcul again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Calcul again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
-			self.load_sampleRate()
-			self.load_spsamples()
+			self.load_sampleRate(again=again)
+			self.load_spsamples(again=again)
 			self.spike_times = self.spike_samples/self.sample_rate
 			self.spike_times = np.asarray(self.spike_times, dtype=np.float64)
 			print("Spike times calculated.")
 		return self.spike_times
 
-	def load_spunits(self):
+	def load_spunits(self, again=False):
 		'''load_spunits() -> .spike_clusters: Spikes units, corresponding to each spike of Spike times'''
 		try:
 			print("Spike units already loaded. Array shape:", self.spike_clusters.shape)
-			if input(" -- Load again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Load again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
 			self.spike_clusters = np.load("spike_clusters.npy")
 			print("Spike units loaded.")
 		return self.spike_clusters
 
-	def extract_cIds(self):
+	def extract_cIds(self, again=False):
 		'''extract_cIds() -> .units, .spike_clusters_i: units numbers (unique occurence) and indexes in the array'''
 		try:
 			print("unit Ids already extracted. Array shape:", self.units.shape)
-			if input(" -- Extract again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Extract again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
-			self.load_spunits()
+			self.load_spunits(again=again)
 			self.units = _unique(self.spike_clusters)
 			self.spike_clusters_i = _index_of(self.spike_clusters, self.units)
 			self.units = np.asarray(self.units, dtype=np.int64)
@@ -233,14 +240,15 @@ class DataManager():
 						self.goodUnits = np.append(self.goodUnits, np.array([int(row["cluster_id"])]))
 			#self.spike_clusters_i = np.asarray(self.spike_clusters_i, dtype=np.float64)
 			print("units Ids extracted.")
-		return self.units, self.spike_clusters_i
+		return self.units, self.goodUnits, self.spike_clusters_i
 
-	def load_sptemplates(self):
+	def load_sptemplates(self, again=False):
 		'''load_sptemplates() -> .spike_templates: Spike templates, corresponding to each spike of Spike times'''
 		try:
 			print("Spike templates already loaded. Array shape:", self.spike_templates.shape)
-			if input(" -- Load again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Load again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
 			self.spike_templates = np.load("spike_templates.npy")
 			self.spike_templates = self.spike_templates.flatten()
@@ -251,31 +259,33 @@ class DataManager():
 			print("Templates loaded.")
 		return self.spike_templates, self.templates
 
-	def attribute_spikeSamples_Times(self):
+	def attribute_spikeSamples_Times(self, again=False):
 		'''attribute_spikeSamples_Times() -> .attributed_spikeSamples, .attributed_spikeSamplesDic, .attributed_spikeTimes, .attributed_spikeTimesDic:
 		attributed Spike times and Spike samples, lists of n_units np arrays of the form 
 		[[unit_idx1, t1, t2...tn], ...] 
 		with t1... in seconds or samples'''
 		try:
 			print("Spike samples and times already attributed. List length:", len(self.attributed_spikeTimes))
-			if input("Attribute again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input("Attribute again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
-			self.calcul_sptimes()
-			self.extract_cIds()
+			self.calcul_sptimes(again=again)
+			self.extract_cIds(again=again)
 			self.attributed_spikeSamples = []
 			self.attributed_spikeSamplesDic = {}
 			self.attributed_spikeTimes = []
 			self.attributed_spikeTimesDic = {}
 			for UNIT in self.units:
-				d = np.where(self.spike_clusters==UNIT)
-				unit = np.array([UNIT], dtype=np.int64)
-				arr1 = np.append(unit, self.spike_samples[d])
-				self.attributed_spikeSamples.append(arr1)
-				self.attributed_spikeSamplesDic[UNIT]=self.spike_samples[d]
-				arr2 = np.append(unit, self.spike_samples[d]*1./self.sample_rate)
-				self.attributed_spikeTimes.append(arr2)
-				self.attributed_spikeTimesDic[UNIT]=self.spike_samples[d]*1./self.sample_rate
+				if UNIT in self.goodUnits:
+					d = np.where(self.spike_clusters==UNIT)
+					unit = np.array([UNIT], dtype=np.int64)
+					arr1 = np.append(unit, self.spike_samples[d])
+					self.attributed_spikeSamples.append(arr1)
+					self.attributed_spikeSamplesDic[UNIT]=self.spike_samples[d]
+					arr2 = np.append(unit, self.spike_samples[d]*1./self.sample_rate)
+					self.attributed_spikeTimes.append(arr2)
+					self.attributed_spikeTimesDic[UNIT]=self.spike_samples[d]*1./self.sample_rate
 
 			#self.attributed_spikeTimes = [x.copy() for x in self.attributed_spikeSamples]
 			#self.attributed_spikeTimesDic = self.attributed_spikeSamplesDic.copy()
@@ -287,24 +297,26 @@ class DataManager():
 			print("Spike samples and times attributed.")
 		return self.attributed_spikeSamples, self.attributed_spikeSamplesDic, self.attributed_spikeTimes, self.attributed_spikeTimesDic
 
-	def attribute_spikeTemplates(self):
+	def attribute_spikeTemplates(self, again=False):
 		'''attribute_spikeTemplates() -> .attributed_spikeTemplatesIdx, self.attributed_spikeTemplates, self.attributed_spikeTemplatesDic: 
 		attributed Spike templates, lists of n_units np arrays of the form 
 		[[unit_idx1, t1, t2, t1, t3...tn], ...] 
 		with t1... being the templates (np arrays storing n_timepoints values)'''
 		try:
 			print("Spike templates attributed. List length:", len(self.attributed_spikeTemplates))
-			if input(" -- Attribute again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Attribute again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
-			self.load_sptemplates()
-			self.extract_cIds()
+			self.load_sptemplates(again=again)
+			self.extract_cIds(again=again)
 			# Attribute template indexes and counts to each unit
 			self.attributed_spikeTemplatesIdx = {}
 			for UNIT in self.units:
-				d = np.where(self.spike_clusters==UNIT)
-				unique, counts = np.unique(self.spike_templates[d], return_counts=True)
-				self.attributed_spikeTemplatesIdx[UNIT]=dict(zip(unique, counts))
+				if UNIT in self.goodUnits:
+					d = np.where(self.spike_clusters==UNIT)
+					unique, counts = np.unique(self.spike_templates[d], return_counts=True)
+					self.attributed_spikeTemplatesIdx[UNIT]=dict(zip(unique, counts))
 			# attribute the templates themselves (weighted average) on the max amplitude channel
 			self.attributed_spikeTemplates = []
 			self.attributed_spikeTemplatesDic = {}
@@ -325,15 +337,16 @@ class DataManager():
 			print("Spikes templates attributed.")
 		return self.attributed_spikeTemplatesIdx, self.attributed_spikeTemplates, self.attributed_spikeTemplatesDic
 
-	def InstFR(self, binsize = 0.002, sd = 10):
+	def InstFR(self, binsize = 0.003, sd = 10, again=False):
 		'''InstFR() -> .IFR: Instantaneous Firing rate, lists of n_units np arrays of the form [[unit_idx1, IFR1, IFR2...IFRn], ...].
 		Binsize is in seconds.'''
 		try:
 			print("IFR already calculated. List length:", len(self.IFR))
-			if input(" -- Calcul again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Calcul again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
-			self.attribute_spikeSamples_Times()
+			self.attribute_spikeSamples_Times(again=again)
 			gaussian = signal.gaussian(90, sd)
 			self.IFRhist = self.attributed_spikeSamples.copy()
 			self.IFR = self.attributed_spikeSamples.copy()
@@ -341,58 +354,81 @@ class DataManager():
 			self.IFRDic = {}
 			binsize*=self.sample_rate
 			binEdges = np.arange(0, self.spike_samples[-1], binsize)
+
+			bar = progressbar.ProgressBar(maxval=len(self.attributed_spikeSamples), \
+			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+			print("Instantaneous Firing rates calcul in progress...")
+			bar.start()
+
 			for i, x in enumerate(self.attributed_spikeSamples):
-				hist = np.histogram(x[1:], binEdges)
-				conv = np.convolve(hist[0], gaussian)
+				bar.update(i+1)
+				sleep(0.1)
 				UNIT = x[0]
-				self.IFRhist[i] = np.append(UNIT, hist[0])
-				self.IFR[i] = np.append(UNIT, conv)
-				self.IFRhistDic[UNIT]=hist[0]
-				self.IFRDic[UNIT]=conv
+				if UNIT in self.goodUnits:
+					hist = np.histogram(x[1:], binEdges)
+					conv = np.convolve(hist[0], gaussian)
+					self.IFRhist[i] = np.append(UNIT, hist[0])
+					self.IFR[i] = np.append(UNIT, conv)
+					self.IFRhistDic[UNIT]=hist[0]
+					self.IFRDic[UNIT]=conv
+			bar.finish()
 			print("Instantaneous Firing rates calculated.")
 			self.IFRhist = np.asarray(self.IFRhist)
 			self.IFR = np.asarray(self.IFR)
 		return self.IFR, self.IFRDic
 
-	def MeanFR(self):
+	def MeanFR(self, again=False):
 		'''MeanFR() -> .MFR: Mean Firing rate, lists of n_units np arrays of the form [np.array([unit_idx1, MFR]), ...]'''
 		try:
 			print("MFR already calculated. List length:", len(self.MFR))
-			if input(" -- Calcul again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Calcul again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
-			self.attribute_spikeSamples_Times()
+			self.attribute_spikeSamples_Times(again=again)
             #Approximate length of the whole recording, in seconds
 			recordLen = float(self.spike_times[-1])           
 			# Calculate MFR
 			self.MFR = []
 			self.MFRDic = {}
+
+			bar = progressbar.ProgressBar(maxval=len(self.attributed_spikeTimes), \
+			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+			print("Mean Firing rates calcul in progress...")
+			bar.start()
+
 			for i, x in enumerate(self.attributed_spikeTimes):
-				# Remove 1min shanks without any spikes
-				shanksSize = 60 # seconds
-				recordLenWithSpikes = 0
-				for t in range(int(recordLen/shanksSize)):
-					shank = (t*shanksSize, (t+1)*shanksSize)
-					spikesInShank = np.where(np.logical_and(self.attributed_spikeTimes[i][1:]>=shank[0], self.attributed_spikeTimes[i][1:]<=shank[1]))
-					if spikesInShank[0].any():
-						recordLenWithSpikes+=shanksSize
-					if recordLenWithSpikes == int(recordLen/shanksSize)*shanksSize:
-						recordLenWithSpikes = recordLen
-				self.MFR.append(np.array([self.attributed_spikeTimes[i][0], float(len(self.attributed_spikeTimes[i][1:]))/recordLenWithSpikes]))
-				self.MFRDic[self.attributed_spikeTimes[i][0]] = float(len(self.attributed_spikeTimes[i][1:]))/recordLenWithSpikes
+				bar.update(i+1)
+				sleep(0.1)
+				UNIT = x[0]
+				if x[0] in self.goodUnits:
+					# Remove 1min shanks without any spikes
+					shanksSize = 60 # seconds
+					recordLenWithSpikes = 0
+					for t in range(int(recordLen/shanksSize)):
+						shank = (t*shanksSize, (t+1)*shanksSize)
+						spikesInShank = np.where(np.logical_and(self.attributed_spikeTimes[i][1:]>=shank[0], self.attributed_spikeTimes[i][1:]<=shank[1]))
+						if spikesInShank[0].any():
+							recordLenWithSpikes+=shanksSize
+						if recordLenWithSpikes == int(recordLen/shanksSize)*shanksSize:
+							recordLenWithSpikes = recordLen
+					self.MFR.append(np.array([self.attributed_spikeTimes[i][0], float(len(self.attributed_spikeTimes[i][1:]))/recordLenWithSpikes]))
+					self.MFRDic[self.attributed_spikeTimes[i][0]] = float(len(self.attributed_spikeTimes[i][1:]))/recordLenWithSpikes
+			bar.finish()
 			print("Mean firing rate calculated.")
 			self.MFR = np.asarray(self.MFR)
 		return self.MFR, self.MFRDic
 
-	def CrossCG(self, bin_size=0.001, window_size=0.15, symmetrize=True, normalize = True):
+	def CrossCG(self, bin_size=0.001, window_size=0.15, symmetrize=True, normalize = True, again=False):
 		'''CCG() -> .CCG: all crossCorrelograms in a n_units x n_units x winsize_bins matrix.By default, bin_size=0.001 and window_size=0.080, in seconds.'''
 		try:
-			print("CrossCorrelograms already computed.", len(self.correlograms))
-			if input(" -- Compute again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			print("CrossCorrelograms already computed.", len(self.CCG))
+			if again==True:
+				if input(" -- Compute again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
-			self.calcul_sptimes()
-			self.extract_cIds()
+			self.calcul_sptimes(again=again)
+			self.extract_cIds(again=again)
 			assert self.sample_rate > 0.
 			assert np.all(np.diff(self.spike_times) >= 0), ("The spike times must be increasing.")
 			assert self.spike_samples.ndim == 1
@@ -413,15 +449,22 @@ class DataManager():
 			shift = 1
 
 		    # At a given shift, the mask precises which spikes have matching spikes
-		    # within the correlogram time window.
+			# within the correlogram time window.
 			mask = np.ones_like(self.spike_samples, dtype=np.bool)
 
 			self.correlograms = _create_correlograms_array(n_units, winsize_bins)
 			print(" - CCG bins: ", winsize_bins)
 
-		    # The loop continues as long as there is at least one spike with
-		    # a matching spike.
+			# The loop continues as long as there is at least one spike with
+			# a matching spike.
+			bar = progressbar.ProgressBar(maxval=len(mask), \
+			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+			print("Crosscorrelograms calcul in progress...")
+			bar.start()
 			while mask[:-shift].any():
+				bar.update(i+1)
+				sleep(0.1)
+
 		        # Number of time samples between spike i and spike i+shift.
 				spike_diff = _diff_shifted(self.spike_samples, shift)
 
@@ -449,7 +492,7 @@ class DataManager():
 				_increment(self.correlograms.ravel(), indices)
 
 				shift += 1
-			
+			bar.finish()
 			# Remove ACG peaks
 			self.correlograms[np.arange(n_units),
 	                 np.arange(n_units),
@@ -467,14 +510,15 @@ class DataManager():
 
 		return self.CCG
 
-	def InterSI(self, bin_size=0.0005, window_size=0.2, normalize = True):
+	def InterSI(self, bin_size=0.0005, window_size=0.2, normalize = True, again=False):
 		'''InterSI() -> .ISI: all interspike interval histograms in a list of the form [np.array([unit_idx1, ISIcounts1, ISIcounts2...]), ...]. By default, bin_size=0.0005 in seconds.'''
 		try:
 			print("InterSpikeIntervals already computed.", len(self.ISI))
-			if input(" -- Compute again? Dial <anything> for yes, <enter> for no: "):
-				raise
+			if again==True:
+				if input(" -- Compute again? Dial <anything> for yes, <enter> for no: "):
+					raise
 		except:
-			self.attribute_spikeSamples_Times()
+			self.attribute_spikeSamples_Times(again=again)
 			self.ISI = []
 			self.ISIDic = {}
 			self.ISIparams = []
@@ -499,8 +543,7 @@ class DataManager():
 
 		return self.ISI, self.ISIDic
 
-
-	def extractFeatures(self, featuresList=['MFR','CCG', 'ISI', 'WVF'],  bin_sizeCCG=0.001, window_sizeCCG=0.15, bin_sizeISI=0.0005):
+	def extractFeatures(self, featuresList=['MFR','CCG', 'ISI', 'WVF'],  bin_sizeCCG=0.001, window_sizeCCG=0.15, bin_sizeISI=0.0005, again=False):
 		'''extractFeatures() -> .extractedFeatures, creates a numy array of shape (n_units, n_features) compatible with scikit-learn uniting/classifying.
 		.extractedFeatures[:,0]: MFR
 		.extractedFeatures[:,1]: 
@@ -518,7 +561,7 @@ class DataManager():
 		self.nanUnits = np.array([])
 
 		if 'MFR' in featuresList:
-			self.MeanFR()
+			self.MeanFR(again=again)
 			self.MFRf0 = {}
 			for unitIdx, unit in enumerate(self.units):
 				if unit in self.goodUnits:
@@ -527,7 +570,7 @@ class DataManager():
 
 
 		if 'CCG' in featuresList:
-			self.CrossCG(bin_size=bin_sizeCCG, window_size=window_sizeCCG)
+			self.CrossCG(bin_size=bin_sizeCCG, window_size=window_sizeCCG, again=again)
 
 			self.CCGf0, self.CCGf1, self.CCGf2, self.CCGf3, self.CCGf4, self.CCGf5 = {}, {}, {}, {}, {}, {}
 			for unitIdx, unit in enumerate(self.units):
@@ -545,7 +588,7 @@ class DataManager():
 							if y1>0 and y2<0:
 								# peak ZONE found thanks to the smoothed ACG
 								print("PEAK ZONE FOUND: bin half+", i+1)
-								peakWinHalf = 10
+								peakWinHalf = int(1+0.01/bin_sizeCCG) # 10 for 1ms bins, 1 above 10ms size bins
 								peakWindow = np.array([CCG[halfCCG+i+1+j] for j in np.arange(-peakWinHalf,peakWinHalf+1,1)])
 								# peak INDEX found thanks to the not smoothed ACG, more accurate
 								peakIndexFromLeft = (halfCCG+i+1 #Index of smoothed ACG peak
@@ -581,7 +624,7 @@ class DataManager():
 		
 
 		if "ISI" in featuresList:
-			self.InterSI(bin_size=bin_sizeISI)
+			self.InterSI(bin_size=bin_sizeISI, again=again)
 			self.ISIf0, self.ISIf1, self.ISIf2, self.CCGf3, self.CCGf4, self.CCGf5 = {}, {}, {}, {}, {}, {}
 			for unitIdx, unit in enumerate(self.units):
 				if unit in self.goodUnits:
@@ -607,15 +650,13 @@ class DataManager():
 
 		return self.extractedFeatures
 
-
-
-	def visualize(self, unitsList=None, featuresList=None, SHOW=True, bin_sizeIFR=0.002, bin_sizeCCG=0.001, window_sizeCCG=0.15, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True):
+	def visualize(self, unitsList=None, featuresList=None, SHOW=True, bin_sizeIFR=0.003, bin_sizeCCG=0.001, window_sizeCCG=0.15, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False):
 		'''visualize() -> Visualization tool.
 		Argument1: list of units whose features need to be visualized (int or float). [unit1, unit2...]
 		Argument2: list of features to visualize (str). Can contain "IFR": Instantaneous Firing Rate, "MFR": Mean Firing Rate, "CCG": CrossCorreloGrams, "ISI" InterSpikeInterval, "WVF": weighted averaged templates.'''
 		EXIT = False
 		while 1:
-			self.extract_cIds()
+			self.extract_cIds(again=again)
 
 			if unitsList == None or unitsList == []:
 				unitsList = []
@@ -668,7 +709,8 @@ class DataManager():
 			print("\n\n--> Units to visualize: ", unitsList, "\n\n--> Features displayed: ", featuresList, "\n\n")
 
 			if "MFR" in featuresList:
-				self.MeanFR()
+				self.MeanFR(again=again)
+				print("test")
 				MFRList = []
 				for i in unitsList:
 					MFRidx = np.where(self.units==i)[0][0]
@@ -679,7 +721,7 @@ class DataManager():
 				dfMFR = pd.DataFrame(data=MFRList, index=unitsListStr, columns=["Mean Firing rate (Hz)"])
 				axMFR = dfMFR.plot.bar(legend=False, width=0.1, linewidth=2, color=(0./255, 204./255, 0./255), edgecolor='k')
 				for p in axMFR.patches:
-					axMFR.annotate('~'+str(round(p.get_height(), 3)), (p.get_x() * 1.005, p.get_height() * 1.005))
+					axMFR.annotate('~'+str(round(p.get_height(), 3)), (p.get_x()*1, p.get_height() * 1.01))
 				figMFR = axMFR.get_figure()
 				if not os.path.exists(self.__dir__+'/visMFRs'):
 					os.makedirs(self.__dir__+'/visMFRs')
@@ -691,11 +733,11 @@ class DataManager():
 				figMFR.savefig(figMFRpath+'.png')
 				
 				self.dfMFR = dfMFR
-				break
+				EXIT=True
 
 
 			if "IFR" in featuresList:
-				self.InstFR(bin_size = bin_sizeIFR, window_size = window_sizeIFR)
+				self.InstFR(binsize = bin_sizeIFR, again=again)
 				IFRDic = {}
 				for i in unitsList:
 					IFRidx = np.where(self.units==i)[0][0]
@@ -718,11 +760,11 @@ class DataManager():
 				figIFR.savefig(figIFRpath+'.png')
 				
 				self.dfIFR = dfIFR
-				break
+				EXIT=True
 
 
 			if "CCG" in featuresList:
-				self.CrossCG(bin_size=bin_sizeCCG, window_size=window_sizeCCG, normalize = normalizeCCG)
+				self.CrossCG(bin_size=bin_sizeCCG, window_size=window_sizeCCG, normalize = normalizeCCG, again=again)
 				plotsxticks = np.arange(-window_sizeCCG*1000/2, window_sizeCCG*1000/2+bin_sizeCCG*1000, bin_sizeCCG*1000)
 
 				CCGDic_df = {} # Need to create a 3D dataset - panel from pandas. Made from dic of dataframes.
@@ -762,13 +804,13 @@ class DataManager():
 							else:
 								color = (0./255, 0./255, 0./255)
 							if plotType == 'bar':
-								CCGaxis.bar(plotsxticks,dfCCG[x][y], color = color, linewidth=0.5)
+								CCGaxis.bar(plotsxticks,dfCCG[x][y], color = color, linewidth=0.2)
 							elif plotType == 'line':
 								CCGaxis.plot(plotsxticks,dfCCG[x][y], color = color)
 							CCGaxis.set_xlabel('dt (ms)', fontsize=6)
 							CCGaxis.set_xlim((-window_sizeCCG*1000/2,window_sizeCCG*1000/2))
 							if normalizeCCG:
-								CCGaxis.set_ylabel('counts - normalized ('+str(np.sum(dfCCG[x][y]))+')', fontsize=6)
+								CCGaxis.set_ylabel('counts - normalized', fontsize=6)
 							else:
 								CCGaxis.set_ylabel('counts', fontsize=6)
 							CCGaxis.tick_params(labelsize=4, color='k')
@@ -792,13 +834,13 @@ class DataManager():
 							else:
 								color = (0./255, 0./255, 0./255)
 							if plotType == 'bar':
-								CCGaxis[i][j].bar(plotsxticks,dfCCG[x][y], color = color, linewidth=0.5)
+								CCGaxis[i][j].bar(plotsxticks,dfCCG[x][y], color = color, linewidth=0.2)
 							elif plotType == 'line':
 								CCGaxis[i][j].plot(plotsxticks,dfCCG[x][y], color = color)
 							CCGaxis[i][j].set_xlabel('dt (ms)', fontsize=6)
 							CCGaxis[i][j].set_xlim((-window_sizeCCG*1000/2,window_sizeCCG*1000/2))
 							if normalizeCCG:
-								CCGaxis[i][j].set_ylabel('counts - normalized ('+str(np.sum(dfCCG[x][y]))+')', fontsize=6)
+								CCGaxis[i][j].set_ylabel('counts - normalized', fontsize=6)
 							else:
 								CCGaxis[i][j].set_ylabel('counts', fontsize=6)
 							CCGaxis[i][j].tick_params(labelsize=4, color='k')
@@ -816,11 +858,11 @@ class DataManager():
 				figCCG.savefig(figCCGpath+'.png')
 
 				self.dfCCG = dfCCG
-				break
+				EXIT=True
 
 
 			if "ISI" in featuresList:
-				self.InterSI(bin_size=bin_sizeISI, window_size=window_sizeISI, normalize = True)
+				self.InterSI(bin_size=bin_sizeISI, window_size=window_sizeISI, normalize = True, again=again)
 				plotsxticks = np.arange(0, window_sizeISI*1000, bin_sizeISI*1000)
 				figISI, ISIaxis = plt.subplots(len(unitsList), 1)
 				colorFlag = 0
@@ -829,11 +871,11 @@ class DataManager():
 					s = 'rate = %0.1f Hz\nCV = %0.2f \nSkewness = %0.3f' % (1./mew,std/mew,skew)
 					if len(unitsList)==1:
 						ISIaxis.bar(plotsxticks, self.ISIDic[x], color = 'r', linewidth=0.5)
-						ISIaxis.annotate(s,xy=(0.65, 0.8),xytext=None,xycoords='axes fraction',fontsize=16, color='k')
+						ISIaxis.annotate(s,xy=(0.65, 0.8),xytext=None,xycoords='axes fraction',fontsize=12, color='k')
 						ISIaxis.set_xlim([0,window_sizeISI*1000]) # milliseconds
 						ISIaxis.tick_params(labelsize=10)
-						ISIaxis.set_xlabel('ISI (ms)', fontsize=14)
-						ISIaxis.set_ylabel('Count', fontsize=14)
+						ISIaxis.set_xlabel('ISI (ms)', fontsize=10)
+						ISIaxis.set_ylabel('Count', fontsize=8)
 					else:
 						if colorFlag%5 == 0:
 							color = (51./255, 153./255, 255./255)
@@ -847,11 +889,11 @@ class DataManager():
 							color = (102./255, 0./255, 204./255)
 						colorFlag+=1
 						ISIaxis[i].bar(plotsxticks, self.ISIDic[x], color = color, linewidth=0.5)
-						ISIaxis[i].annotate(s,xy=(0.65, 0.8),xytext=None,xycoords='axes fraction',fontsize=16)
+						ISIaxis[i].annotate(s,xy=(0.65, 0.8),xytext=None,xycoords='axes fraction',fontsize=12)
 						ISIaxis[i].set_xlim([0,window_sizeISI*1000]) # milliseconds
 						ISIaxis[i].tick_params(labelsize=10)
-						ISIaxis[i].set_xlabel('ISI (ms)', fontsize=14)
-						ISIaxis[i].set_ylabel('Count', fontsize=14)
+						ISIaxis[i].set_xlabel('ISI (ms)', fontsize=10)
+						ISIaxis[i].set_ylabel('Count', fontsize=8)
 				figISI.tight_layout()
 				if not os.path.exists(self.__dir__+'/visISIs'):
 					os.makedirs(self.__dir__+'/visISIs')
@@ -862,10 +904,10 @@ class DataManager():
 					figISIpath+=i
 				figISI.savefig(figISIpath+'.eps')
 				figISI.savefig(figISIpath+'.png')
-				break
+				EXIT=True
 
 			if "WVF" in featuresList:
-				self.attribute_spikeTemplates()
+				self.attribute_spikeTemplates(again=again)
 				WVFDic = {unit: self.attributed_spikeTemplatesDic[unit] for unit in unitsList}
 
 				dfWVF = pd.DataFrame(WVFDic)
@@ -884,26 +926,183 @@ class DataManager():
 				figWVF.savefig(figWVFpath+'.png')
 
 				self.dfWVF = dfWVF
-				break
+				EXIT=True
 
 
 			if SHOW == True:
 				#plt.show()
 				pass
 	
-	def save_DM(self, filename=None):
+	def save_DM(self, filename=None, OBJECT=True, UNPACK=True):
 		'''save() -> saving a DataManager() instance. Argument: filename, has to be of the form "xxxxxxx.pkl".'''
-		if not os.path.exists(self.__dir__+'/saveCTC_dManager'):
-			os.makedirs(self.__dir__+'/saveCTC_dManager')
+		if not os.path.exists(self.__dir__+'/save_DManager'):
+			os.makedirs(self.__dir__+'/save_DManager')
 
 		if filename==None:
-			if not os.path.exists(self.__dir__+'/saveCTC_dManager'):
-				os.makedirs(self.__dir__+'/saveCTC_dManager')
-			filename=self.__dir__+'/saveCTC_dManager'+'/DataManager_'+time.strftime("%Y.%m.%d-%H:%M")+'.pkl'
+			directory = self.__dir__+'/save_DManager/'+time.strftime("%Y.%m.%d-%H.%M")
+			if not os.path.exists(directory):
+				os.makedirs(directory)
+			filename=directory+'/DataManager.pkl'
 		else:
-			filename=self.__dir__+'/saveCTC_dManager'+'/'+filename
-		with open(filename, 'wb') as output:
-			dill.dump(self, output)
+			filename=directory+'/'+filename
+
+		if OBJECT==True:
+			with open(filename, 'wb') as output:
+				dill.dump(self, output)
+
+		if UNPACK==True:
+			try:
+				np.save(directory+"/sample_rate.npy", np.array([self.sample_rate]))
+				np.savetxt(directory+"/sample_rate.txt", np.array([self.sample_rate]))
+				scipy.io.savemat(directory+"/sample_rate.mat", mdict={'sample_rate': np.asarray(self.sample_rate)})
+			except:
+				print("No \".sample_rate\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/spike_samples.npy", self.spike_samples)
+				np.savetxt(directory+"/spike_samples.txt", self.spike_samples)
+				scipy.io.savemat(directory+"/spike_samples.mat", mdict={'spike_samples': self.spike_samples})
+			except:
+				print("No \".spike_samples\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/spike_times.npy", self.spike_times)
+				np.savetxt(directory+"/spike_times.txt", self.spike_times)
+				scipy.io.savemat(directory+"/spike_times.mat", mdict={'spike_times': self.spike_times})
+			except:
+				print("No \".spike_times\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/spike_clusters.npy", self.spike_clusters)
+				np.savetxt(directory+"/spike_clusters.txt", self.spike_clusters)
+				scipy.io.savemat(directory+"/spike_clusters.mat", mdict={'spike_clusters': self.spike_clusters})
+			except:
+				print("No \".spike_clusters\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/units.npy", self.units)
+				np.savetxt(directory+"/units.txt", self.units)
+				scipy.io.savemat(directory+"/units.mat", mdict={'units': self.units})
+			except:
+				print("No \".units\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/goodUnits.npy", self.goodUnits)
+				np.savetxt(directory+"/goodUnits.txt", self.goodUnits)
+				scipy.io.savemat(directory+"/goodUnits.mat", mdict={'goodUnits': self.goodUnits})
+			except:
+				print("No \".goodUnits\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/nanUnits.npy", self.nanUnits)
+				np.savetxt(directory+"/nanUnits.txt", self.nanUnits)
+				scipy.io.savemat(directory+"/nanUnits.mat", mdict={'nanUnits': nanUnits})
+			except:
+				print("No \".nanUnits\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/usedUnits.npy", self.usedUnits)
+				np.savetxt(directory+"/usedUnits.txt", self.usedUnits)
+				scipy.io.savemat(directory+"/usedUnits.mat", mdict={'usedUnits': self.usedUnits})
+			except:
+				print("No \".usedUnits\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/spike_templates.npy", self.spike_templates)
+				np.savetxt(directory+"/spike_templates.txt", self.spike_templates)
+				scipy.io.savemat(directory+"/spike_templates.mat", mdict={'spike_templates': self.spike_templates})
+			except:
+				print("No \".spike_templates\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/templates.npy", self.templates)
+				np.savetxt(directory+"/templates.txt", self.templates)
+				scipy.io.savemat(directory+"/templates.mat", mdict={'sample_rate': self.templates})
+			except:
+				print("No \".templates\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/attributed_spikeSamples.npy", np.array(self.attributed_spikeSamples))
+				with open(directory+"/attributed_spikeSamples.txt", 'wb') as output:
+					for array in self.attributed_spikeSamples:
+						np.savetxt(output, array)
+				scipy.io.savemat(directory+"/attributed_spikeSamples.mat", mdict={'attributed_spikeSamples': np.asarray(self.attributed_spikeSamples)})
+			except:
+				print("No \".attributed_spikeSamples\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/attributed_spikeTimes.npy", np.array(self.attributed_spikeTimes))
+				with open(directory+"/attributed_spikeTimes.txt", 'wb') as output:
+					for array in self.attributed_spikeTimes:
+						np.savetxt(output, array)
+				scipy.io.savemat(directory+"/attributed_spikeTimes.mat", mdict={'attributed_spikeTimes': np.asarray(self.attributed_spikeTimes)})
+			except:
+				print("No \".attributed_spikeTimes\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/attributed_spikeTemplatesIdx.npy", np.array(self.attributed_spikeTemplatesIdx))
+				with open(directory+"/attributed_spikeTemplatesIdx.txt", 'wb') as output:
+					for array in self.attributed_spikeTemplatesIdx:
+						np.savetxt(output, array)
+				scipy.io.savemat(directory+"/attributed_spikeTemplatesIdx.mat", mdict={'attributed_spikeTemplatesIdx': np.asarray(self.attributed_spikeTemplatesIdx)})
+			except:
+				print("No \".attributed_spikeTemplatesIdx\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/attributed_spikeTemplates.npy", np.array(self.attributed_spikeTemplates))
+				with open(directory+"/attributed_spikeTemplates.txt", 'wb') as output:
+					for array in self.attributed_spikeTemplates:
+						np.savetxt(output, array)
+				scipy.io.savemat(directory+"/attributed_spikeTemplates.mat", mdict={'attributed_spikeTemplates': np.asarray(self.attributed_spikeTemplates)})
+			except:
+				print("No \".attributed_spikeTemplates\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/IFR.npy", self.IFR)
+				np.savetxt(directory+"/IFR.txt", self.IFR)
+				scipy.io.savemat(directory+"/IFR.mat", mdict={'sample_rate': self.IFR})
+			except:
+				print("No \".IFR\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/MFR.npy", self.MFR)
+				np.savetxt(directory+"/MFR.txt", self.MFR)
+				scipy.io.savemat(directory+"/MFR.mat", mdict={'MFR': self.MFR})
+			except:
+				print("No \".MFR\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/CCG.npy", self.CCG)
+				with open(directory+"/CCG.txt", 'wb') as outfile:
+				    for i in range(len(self.CCG)):
+				        np.savetxt(outfile, self.CCG[i])   
+				scipy.io.savemat(directory+"/CCG.mat", mdict={'CCG': self.CCG})
+			except:
+				print("No \".CCG\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/ISI.npy", self.ISI)
+				np.savetxt(directory+"/ISI.txt", self.ISI)
+				scipy.io.savemat(directory+"/ISI.mat", mdict={'ISI': self.ISI})
+			except:
+				print("No \".ISI\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			try:
+				np.save(directory+"/extractedFeatures.npy", self.extractedFeatures)
+				np.savetxt(directory+"/extractedFeatures.txt", self.extractedFeatures)
+				scipy.io.savemat(directory+"/extractedFeatures.mat", mdict={'extractedFeatures': self.extractedFeatures})
+			except:
+				print("No \".extractedFeatures\" attribute found. It wasn't required by any analysis performed.")
+				pass
+			print("DataManager attributes unpacked and saved as text files.")
+
+	def compute_all_default_and_save(self):
+		self.extractFeatures()
+		self.InstFR()
+		self.attribute_spikeTemplates()
+		self.save_DM()
+
+
 
 
 
