@@ -419,7 +419,7 @@ class DataManager():
 			self.MFR = np.asarray(self.MFR)
 		return self.MFR, self.MFRDic
 
-	def CrossCG(self, bin_size=0.001, window_size=0.15, symmetrize=True, normalize = True, again=False):
+	def CrossCG(self, bin_size=0.001, window_size=0.1, symmetrize=True, normalize = True, again=False):
 		'''CCG() -> .CCG: all crossCorrelograms in a n_units x n_units x winsize_bins matrix.By default, bin_size=0.001 and window_size=0.080, in seconds.'''
 		try:
 			print("CrossCorrelograms already computed.", len(self.CCG))
@@ -461,8 +461,10 @@ class DataManager():
 			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
 			print("Crosscorrelograms calcul in progress...")
 			bar.start()
+			i=0
 			while mask[:-shift].any():
 				bar.update(i+1)
+				i+=1
 				sleep(0.1)
 
 		        # Number of time samples between spike i and spike i+shift.
@@ -543,7 +545,7 @@ class DataManager():
 
 		return self.ISI, self.ISIDic
 
-	def extractFeatures(self, featuresList=['MFR','CCG', 'ISI', 'WVF'],  bin_sizeCCG=0.001, window_sizeCCG=0.15, bin_sizeISI=0.0005, again=False):
+	def extractFeatures(self, featuresList=['MFR','CCG', 'ISI', 'WVF'],  bin_sizeCCG=0.001, window_sizeCCG=0.1, bin_sizeISI=0.0005, again=False):
 		'''extractFeatures() -> .extractedFeatures, creates a numy array of shape (n_units, n_features) compatible with scikit-learn uniting/classifying.
 		.extractedFeatures[:,0]: MFR
 		.extractedFeatures[:,1]: 
@@ -584,10 +586,10 @@ class DataManager():
 						for i in range(halfCCG-1): # i max = halfCCG-2
 							y1 = diffCCG[halfCCG+i] # Needs to start at diffCCG[halfCCG] = diff between CCG[halfCCG] (center) and CCG[halfCCG+1] (right after center)
 							y2 = diffCCG[halfCCG+i+1] # Needs to end at diffCCG[halfCCG+halfCCG-1]
-							print("Unit:", unit," - y1:", y1, " - y2:", y2, " - i:", i)
+							#print("Unit:", unit," - y1:", y1, " - y2:", y2, " - i:", i)
 							if y1>0 and y2<0:
 								# peak ZONE found thanks to the smoothed ACG
-								print("PEAK ZONE FOUND: bin half+", i+1)
+								#print("PEAK ZONE FOUND: bin half+", i+1)
 								peakWinHalf = int(1+0.01/bin_sizeCCG) # 10 for 1ms bins, 1 above 10ms size bins
 								peakWindow = np.array([CCG[halfCCG+i+1+j] for j in np.arange(-peakWinHalf,peakWinHalf+1,1)])
 								# peak INDEX found thanks to the not smoothed ACG, more accurate
@@ -595,7 +597,7 @@ class DataManager():
 														+ np.where(peakWindow==peakWindow.max())[0][0]-peakWinHalf) # Index of unsmoothed ACG peak
 								peakIndexFromCenter = abs(peakIndexFromLeft - halfCCG)
 								self.CCGf0[unit] = 1./(peakIndexFromCenter*bin_sizeCCG)
-								print("peakIndexFromCenter:", peakIndexFromCenter)
+								#print("peakIndexFromCenter:", peakIndexFromCenter)
 								break
 					else:
 						self.nanUnits = np.append(self.nanUnits, np.array([unit]))
@@ -650,7 +652,7 @@ class DataManager():
 
 		return self.extractedFeatures
 
-	def visualize(self, unitsList=None, featuresList=None, SHOW=True, bin_sizeIFR=0.003, bin_sizeCCG=0.001, window_sizeCCG=0.15, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False):
+	def visualize(self, unitsList=None, featuresList=None, SHOW=True, bin_sizeIFR=0.003, bin_sizeCCG=0.001, window_sizeCCG=0.1, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False):
 		'''visualize() -> Visualization tool.
 		Argument1: list of units whose features need to be visualized (int or float). [unit1, unit2...]
 		Argument2: list of features to visualize (str). Can contain "IFR": Instantaneous Firing Rate, "MFR": Mean Firing Rate, "CCG": CrossCorreloGrams, "ISI" InterSpikeInterval, "WVF": weighted averaged templates.'''
@@ -681,7 +683,7 @@ class DataManager():
 							print("\nYou must dial a floatting point number or an integer.")
 
 				if unitsList==[]:
-					print("\nYou didn't provide any unit. Not very wise, young (wo)man.")
+					print("\nYou didn't provide any unit.")
 					EXIT = True
 
 			if (featuresList == None or featuresList == []) and EXIT == False:
@@ -698,11 +700,11 @@ class DataManager():
 						print("\nYou must dial <MFR>, <IFR>, <CCG>, <ISI> or <WVF>.")
 
 				if featuresList==[]:
-					print("\nYou didn't provide any feature. Not very wise, young (wo)man.")
+					print("\nYou didn't provide any feature.")
 					EXIT = True
 
 			if EXIT==True:
-				print("\n\nGoodbye, thanks for using Max's tools.")
+				print("\n\nGoodbye, thanks for using XtraDataManager's visualization tool.")
 				break
 
 
@@ -710,18 +712,23 @@ class DataManager():
 
 			if "MFR" in featuresList:
 				self.MeanFR(again=again)
-				print("test")
 				MFRList = []
 				for i in unitsList:
-					MFRidx = np.where(self.units==i)[0][0]
+					MFRidx = np.where(self.goodUnits==i)[0][0]
 					MFRList.append(self.MFR[MFRidx][1])
 				unitsListStr = [str(i) for i in unitsList]
 				assert len(unitsListStr) == len(MFRList)
 
 				dfMFR = pd.DataFrame(data=MFRList, index=unitsListStr, columns=["Mean Firing rate (Hz)"])
-				axMFR = dfMFR.plot.bar(legend=False, width=0.1, linewidth=2, color=(0./255, 204./255, 0./255), edgecolor='k')
+				axMFR = dfMFR.plot.bar(legend=False, width=0.1, linewidth=2, color=(0./255, 153./255, 0./255), edgecolor='k', hatch="-")
+				axMFR.tick_params(labelsize=6, color='k', direction='out')
+				axMFR.tick_params(axis='x', labelrotation=90)
+				axMFR.set_xlabel('Cluster index', fontsize=6)
+				axMFR.set_ylabel('Mean Firing Rate (Hz)', fontsize=6)
+				axMFR.set_ylim((0, dfMFR.max()[0]+3)) # Maximum 3Hz above max firing rate
+				annotShift = axMFR.patches[0].get_x()*0.1
 				for p in axMFR.patches:
-					axMFR.annotate('~'+str(round(p.get_height(), 3)), (p.get_x()*1, p.get_height() * 1.01))
+					axMFR.annotate('~'+str(round(p.get_height(), 3)), (p.get_x()*1-annotShift, p.get_height() * 1.03))
 				figMFR = axMFR.get_figure()
 				if not os.path.exists(self.__dir__+'/visMFRs'):
 					os.makedirs(self.__dir__+'/visMFRs')
@@ -740,14 +747,15 @@ class DataManager():
 				self.InstFR(binsize = bin_sizeIFR, again=again)
 				IFRDic = {}
 				for i in unitsList:
-					IFRidx = np.where(self.units==i)[0][0]
+					IFRidx = np.where(self.goodUnits==i)[0][0]
 					IFRDic[self.IFR[IFRidx][0]] = pd.Series(self.IFR[IFRidx][1:].tolist(), index=np.arange(len(self.IFR[IFRidx][1:]))*(bin_sizeIFR))
 				unitsListStr = [str(i) for i in unitsList]
 
 				dfIFR = pd.DataFrame(IFRDic)
 				axIFR = dfIFR.plot.area(stacked=False, x_compat=True)
 				axIFR.set_xlabel('Recording time (ms)', fontsize=6)
-				axIFR.set_xlabel('Instantaneous Firing Rate ('+str(1./bin_size)+'Hz)', fontsize=6)
+				axIFR.set_ylabel('Instantaneous Firing Rate (y*'+str(round(1./bin_sizeIFR, 3))+'Hz)', fontsize=6)
+				axIFR.tick_params(labelsize=6, color='k', direction='out')
 				figIFR = axIFR.get_figure()
 				if not os.path.exists(self.__dir__+'/visIFRs'):
 					os.makedirs(self.__dir__+'/visIFRs')
@@ -813,8 +821,8 @@ class DataManager():
 								CCGaxis.set_ylabel('counts - normalized', fontsize=6)
 							else:
 								CCGaxis.set_ylabel('counts', fontsize=6)
-							CCGaxis.tick_params(labelsize=4, color='k')
-							CCGaxis.set_title(str(x)+'-'+str(y),fontsize=10)
+							CCGaxis.tick_params(labelsize=4, color='k', direction='out')
+							CCGaxis.set_title(str(x)+'-'+str(y),fontsize=8)
 				else:
 					colorFlag = 0	
 					for i, x in enumerate(unitsList):
@@ -843,8 +851,8 @@ class DataManager():
 								CCGaxis[i][j].set_ylabel('counts - normalized', fontsize=6)
 							else:
 								CCGaxis[i][j].set_ylabel('counts', fontsize=6)
-							CCGaxis[i][j].tick_params(labelsize=4, color='k')
-							CCGaxis[i][j].set_title(str(x)+'-'+str(y),fontsize=10)
+							CCGaxis[i][j].tick_params(labelsize=4, color='k', direction='out')
+							CCGaxis[i][j].set_title(str(x)+'-'+str(y),fontsize=8)
 				figCCG.tight_layout()
 
 				if not os.path.exists(self.__dir__+'/visCCGs'):
@@ -868,14 +876,15 @@ class DataManager():
 				colorFlag = 0
 				for i, x in enumerate(unitsList):
 					mew, std, skew = self.ISIparamsDic[x][0], self.ISIparamsDic[x][1]**0.5, self.ISIparamsDic[x][2]
-					s = 'rate = %0.1f Hz\nCV = %0.2f \nSkewness = %0.3f' % (1./mew,std/mew,skew)
+					s = '1/mean~rate = %0.1f Hz\nCV = %0.2f \nSkewness = %0.3f' % (1./mew,std/mew,skew)
 					if len(unitsList)==1:
 						ISIaxis.bar(plotsxticks, self.ISIDic[x], color = 'r', linewidth=0.5)
-						ISIaxis.annotate(s,xy=(0.65, 0.8),xytext=None,xycoords='axes fraction',fontsize=12, color='k')
+						ISIaxis.annotate(s,xy=(0.65, 0.6),xytext=None,xycoords='axes fraction',fontsize=6, color='k')
 						ISIaxis.set_xlim([0,window_sizeISI*1000]) # milliseconds
-						ISIaxis.tick_params(labelsize=10)
-						ISIaxis.set_xlabel('ISI (ms)', fontsize=10)
-						ISIaxis.set_ylabel('Count', fontsize=8)
+						ISIaxis.set_xlabel('ISI (ms)', fontsize=6)
+						ISIaxis.set_ylabel('Counts', fontsize=6)
+						ISIaxis.set_title(str(x),fontsize=12)
+						ISIaxis.tick_params(labelsize=6, color='k', direction='out')
 					else:
 						if colorFlag%5 == 0:
 							color = (51./255, 153./255, 255./255)
@@ -889,11 +898,12 @@ class DataManager():
 							color = (102./255, 0./255, 204./255)
 						colorFlag+=1
 						ISIaxis[i].bar(plotsxticks, self.ISIDic[x], color = color, linewidth=0.5)
-						ISIaxis[i].annotate(s,xy=(0.65, 0.8),xytext=None,xycoords='axes fraction',fontsize=12)
+						ISIaxis[i].annotate(s,xy=(0.65, 0.6),xytext=None,xycoords='axes fraction',fontsize=6, color='k')
 						ISIaxis[i].set_xlim([0,window_sizeISI*1000]) # milliseconds
-						ISIaxis[i].tick_params(labelsize=10)
-						ISIaxis[i].set_xlabel('ISI (ms)', fontsize=10)
-						ISIaxis[i].set_ylabel('Count', fontsize=8)
+						ISIaxis[i].set_xlabel('ISI (ms)', fontsize=6)
+						ISIaxis[i].set_ylabel('Counts', fontsize=6)
+						ISIaxis[i].set_title(str(x),fontsize=12, fontweight='bold')
+						ISIaxis[i].tick_params(labelsize=6, color='k')
 				figISI.tight_layout()
 				if not os.path.exists(self.__dir__+'/visISIs'):
 					os.makedirs(self.__dir__+'/visISIs')
@@ -914,6 +924,7 @@ class DataManager():
 				axWVF = dfWVF.plot(x_compat=True, colormap='cubehelix')
 				axWVF.set_ylabel('??', fontsize=6)
 				axWVF.set_xlabel('Time samples (30kHz)', fontsize=6)
+				axWVF.tick_params(labelsize=6, color='k', direction='out')
 				figWVF = axWVF.get_figure()
 				if not os.path.exists(self.__dir__+'/visWVFs'):
 					os.makedirs(self.__dir__+'/visWVFs')
@@ -933,7 +944,7 @@ class DataManager():
 				#plt.show()
 				pass
 	
-	def save_DM(self, filename=None, OBJECT=True, UNPACK=True):
+	def save_DM(self, filename=None, OBJECT=False, UNPACKED=True):
 		'''save() -> saving a DataManager() instance. Argument: filename, has to be of the form "xxxxxxx.pkl".'''
 		if not os.path.exists(self.__dir__+'/save_DManager'):
 			os.makedirs(self.__dir__+'/save_DManager')
@@ -950,57 +961,86 @@ class DataManager():
 			with open(filename, 'wb') as output:
 				dill.dump(self, output)
 
-		if UNPACK==True:
+		if UNPACKED==True:
+			bar = progressbar.ProgressBar(maxval=19, \
+			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+			print("Crosscorrelograms calcul in progress...")
+			bar.start()
+			i=0
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/sample_rate.npy", np.array([self.sample_rate]))
 				np.savetxt(directory+"/sample_rate.txt", np.array([self.sample_rate]))
 				scipy.io.savemat(directory+"/sample_rate.mat", mdict={'sample_rate': np.asarray(self.sample_rate)})
 			except:
-				print("No \".sample_rate\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".sample_rate\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/spike_samples.npy", self.spike_samples)
 				np.savetxt(directory+"/spike_samples.txt", self.spike_samples)
 				scipy.io.savemat(directory+"/spike_samples.mat", mdict={'spike_samples': self.spike_samples})
 			except:
-				print("No \".spike_samples\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".spike_samples\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/spike_times.npy", self.spike_times)
 				np.savetxt(directory+"/spike_times.txt", self.spike_times)
 				scipy.io.savemat(directory+"/spike_times.mat", mdict={'spike_times': self.spike_times})
 			except:
-				print("No \".spike_times\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".spike_times\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/spike_clusters.npy", self.spike_clusters)
 				np.savetxt(directory+"/spike_clusters.txt", self.spike_clusters)
 				scipy.io.savemat(directory+"/spike_clusters.mat", mdict={'spike_clusters': self.spike_clusters})
 			except:
-				print("No \".spike_clusters\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".spike_clusters\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/units.npy", self.units)
 				np.savetxt(directory+"/units.txt", self.units)
 				scipy.io.savemat(directory+"/units.mat", mdict={'units': self.units})
 			except:
-				print("No \".units\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".units\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/goodUnits.npy", self.goodUnits)
 				np.savetxt(directory+"/goodUnits.txt", self.goodUnits)
 				scipy.io.savemat(directory+"/goodUnits.mat", mdict={'goodUnits': self.goodUnits})
 			except:
-				print("No \".goodUnits\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".goodUnits\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/nanUnits.npy", self.nanUnits)
 				np.savetxt(directory+"/nanUnits.txt", self.nanUnits)
-				scipy.io.savemat(directory+"/nanUnits.mat", mdict={'nanUnits': nanUnits})
+				scipy.io.savemat(directory+"/nanUnits.mat", mdict={'nanUnits': self.nanUnits})
 			except:
-				print("No \".nanUnits\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".nanUnits\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/usedUnits.npy", self.usedUnits)
 				np.savetxt(directory+"/usedUnits.txt", self.usedUnits)
 				scipy.io.savemat(directory+"/usedUnits.mat", mdict={'usedUnits': self.usedUnits})
@@ -1008,92 +1048,126 @@ class DataManager():
 				print("No \".usedUnits\" attribute found. It wasn't required by any analysis performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/spike_templates.npy", self.spike_templates)
 				np.savetxt(directory+"/spike_templates.txt", self.spike_templates)
 				scipy.io.savemat(directory+"/spike_templates.mat", mdict={'spike_templates': self.spike_templates})
 			except:
-				print("No \".spike_templates\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".spike_templates\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/templates.npy", self.templates)
 				np.savetxt(directory+"/templates.txt", self.templates)
 				scipy.io.savemat(directory+"/templates.mat", mdict={'sample_rate': self.templates})
 			except:
-				print("No \".templates\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".templates\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/attributed_spikeSamples.npy", np.array(self.attributed_spikeSamples))
 				with open(directory+"/attributed_spikeSamples.txt", 'wb') as output:
 					for array in self.attributed_spikeSamples:
 						np.savetxt(output, array)
 				scipy.io.savemat(directory+"/attributed_spikeSamples.mat", mdict={'attributed_spikeSamples': np.asarray(self.attributed_spikeSamples)})
 			except:
-				print("No \".attributed_spikeSamples\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".attributed_spikeSamples\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/attributed_spikeTimes.npy", np.array(self.attributed_spikeTimes))
 				with open(directory+"/attributed_spikeTimes.txt", 'wb') as output:
 					for array in self.attributed_spikeTimes:
 						np.savetxt(output, array)
 				scipy.io.savemat(directory+"/attributed_spikeTimes.mat", mdict={'attributed_spikeTimes': np.asarray(self.attributed_spikeTimes)})
 			except:
-				print("No \".attributed_spikeTimes\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".attributed_spikeTimes\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/attributed_spikeTemplatesIdx.npy", np.array(self.attributed_spikeTemplatesIdx))
 				with open(directory+"/attributed_spikeTemplatesIdx.txt", 'wb') as output:
 					for array in self.attributed_spikeTemplatesIdx:
 						np.savetxt(output, array)
 				scipy.io.savemat(directory+"/attributed_spikeTemplatesIdx.mat", mdict={'attributed_spikeTemplatesIdx': np.asarray(self.attributed_spikeTemplatesIdx)})
 			except:
-				print("No \".attributed_spikeTemplatesIdx\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".attributed_spikeTemplatesIdx\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/attributed_spikeTemplates.npy", np.array(self.attributed_spikeTemplates))
 				with open(directory+"/attributed_spikeTemplates.txt", 'wb') as output:
 					for array in self.attributed_spikeTemplates:
 						np.savetxt(output, array)
 				scipy.io.savemat(directory+"/attributed_spikeTemplates.mat", mdict={'attributed_spikeTemplates': np.asarray(self.attributed_spikeTemplates)})
 			except:
-				print("No \".attributed_spikeTemplates\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".attributed_spikeTemplates\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/IFR.npy", self.IFR)
 				np.savetxt(directory+"/IFR.txt", self.IFR)
 				scipy.io.savemat(directory+"/IFR.mat", mdict={'sample_rate': self.IFR})
 			except:
-				print("No \".IFR\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".IFR\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/MFR.npy", self.MFR)
 				np.savetxt(directory+"/MFR.txt", self.MFR)
 				scipy.io.savemat(directory+"/MFR.mat", mdict={'MFR': self.MFR})
 			except:
-				print("No \".MFR\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".MFR\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/CCG.npy", self.CCG)
 				with open(directory+"/CCG.txt", 'wb') as outfile:
 				    for i in range(len(self.CCG)):
 				        np.savetxt(outfile, self.CCG[i])   
 				scipy.io.savemat(directory+"/CCG.mat", mdict={'CCG': self.CCG})
 			except:
-				print("No \".CCG\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".CCG\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/ISI.npy", self.ISI)
 				np.savetxt(directory+"/ISI.txt", self.ISI)
 				scipy.io.savemat(directory+"/ISI.mat", mdict={'ISI': self.ISI})
 			except:
-				print("No \".ISI\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".ISI\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
 			try:
+				bar.update(i+1)
+				i+=1
+				sleep(0.1)
 				np.save(directory+"/extractedFeatures.npy", self.extractedFeatures)
 				np.savetxt(directory+"/extractedFeatures.txt", self.extractedFeatures)
 				scipy.io.savemat(directory+"/extractedFeatures.mat", mdict={'extractedFeatures': self.extractedFeatures})
 			except:
-				print("No \".extractedFeatures\" attribute found. It wasn't required by any analysis performed.")
+				print("No \".extractedFeatures\" attribute found. It wasn't required by any analysis previously performed.")
 				pass
+			bar.finish()
 			print("DataManager attributes unpacked and saved as text files.")
 
 	def compute_all_default_and_save(self):
