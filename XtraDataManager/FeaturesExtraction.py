@@ -720,15 +720,15 @@ class DataManager():
 				assert len(unitsListStr) == len(MFRList)
 
 				dfMFR = pd.DataFrame(data=MFRList, index=unitsListStr, columns=["Mean Firing rate (Hz)"])
-				axMFR = dfMFR.plot.bar(legend=False, width=0.1, linewidth=2, color=(0./255, 153./255, 0./255), edgecolor='k', hatch="-")
+				axMFR = dfMFR.plot(kind='bar', rot=0, legend=False, width=0.1, linewidth=2, color=(0./255, 153./255, 0./255), edgecolor='k', hatch="-")
 				axMFR.tick_params(labelsize=6, color='k', direction='out')
-				axMFR.tick_params(axis='x', labelrotation=90)
-				axMFR.set_xlabel('Cluster index', fontsize=6)
-				axMFR.set_ylabel('Mean Firing Rate (Hz)', fontsize=6)
+				axMFR.set_xlabel('Cluster index', fontsize=10)
+				axMFR.set_ylabel('Mean Firing Rate (Hz)', fontsize=10)
 				axMFR.set_ylim((0, dfMFR.max()[0]+3)) # Maximum 3Hz above max firing rate
-				annotShift = axMFR.patches[0].get_x()*0.1
+				heightShift = axMFR.patches[0].get_height()*0.03
 				for p in axMFR.patches:
-					axMFR.annotate('~'+str(round(p.get_height(), 3)), (p.get_x()*1-annotShift, p.get_height() * 1.03))
+					width = p.get_width()
+					axMFR.annotate('~'+str(round(p.get_height(), 3)), (p.get_x()+(width/2), p.get_height() + heightShift), size = 8, ha="center")
 				figMFR = axMFR.get_figure()
 				if not os.path.exists(self.__dir__+'/visMFRs'):
 					os.makedirs(self.__dir__+'/visMFRs')
@@ -788,8 +788,6 @@ class DataManager():
 				pnCCG = pnCCG.swapaxes('minor_axis', 'major_axis')
 				dfCCG = pnCCG.to_frame()
 
-				'''dfCCG = dfCCG.unstack(level=0)
-				axCCG = dfCCG.plot(kind='bar', subplots=True)'''
 
 
 				figCCG, CCGaxis = plt.subplots(len(unitsList), len(unitsList))
@@ -879,11 +877,11 @@ class DataManager():
 					s = '1/mean~rate = %0.1f Hz\nCV = %0.2f \nSkewness = %0.3f' % (1./mew,std/mew,skew)
 					if len(unitsList)==1:
 						ISIaxis.bar(plotsxticks, self.ISIDic[x], color = 'r', linewidth=0.5)
-						ISIaxis.annotate(s,xy=(0.65, 0.6),xytext=None,xycoords='axes fraction',fontsize=6, color='k')
+						ISIaxis.annotate(s,xy=(0.65, 0.6),xytext=None,xycoords='axes fraction',fontsize=12, color='k')
 						ISIaxis.set_xlim([0,window_sizeISI*1000]) # milliseconds
-						ISIaxis.set_xlabel('ISI (ms)', fontsize=6)
-						ISIaxis.set_ylabel('Counts', fontsize=6)
-						ISIaxis.set_title(str(x),fontsize=12)
+						ISIaxis.set_xlabel('ISI (ms)', fontsize=12)
+						ISIaxis.set_ylabel('Counts', fontsize=12)
+						ISIaxis.set_title(str(x),fontsize=16, fontweight='bold')
 						ISIaxis.tick_params(labelsize=6, color='k', direction='out')
 					else:
 						if colorFlag%5 == 0:
@@ -903,7 +901,7 @@ class DataManager():
 						ISIaxis[i].set_xlabel('ISI (ms)', fontsize=6)
 						ISIaxis[i].set_ylabel('Counts', fontsize=6)
 						ISIaxis[i].set_title(str(x),fontsize=12, fontweight='bold')
-						ISIaxis[i].tick_params(labelsize=6, color='k')
+						ISIaxis[i].tick_params(labelsize=6, color='k', direction='out')
 				figISI.tight_layout()
 				if not os.path.exists(self.__dir__+'/visISIs'):
 					os.makedirs(self.__dir__+'/visISIs')
