@@ -919,9 +919,9 @@ class DataManager():
 				WVFDic = {unit: self.attributed_spikeTemplatesDic[unit] for unit in unitsList}
 
 				dfWVF = pd.DataFrame(WVFDic)
-				axWVF = dfWVF.plot(x_compat=True, colormap='cubehelix')
-				axWVF.set_ylabel('??', fontsize=6)
-				axWVF.set_xlabel('Time samples (30kHz)', fontsize=6)
+				axWVF = dfWVF.plot(x_compat=True, colormap='prism')
+				axWVF.set_ylabel('??', fontsize=10)
+				axWVF.set_xlabel('Time samples (30kHz)', fontsize=10)
 				axWVF.tick_params(labelsize=6, color='k', direction='out')
 				figWVF = axWVF.get_figure()
 				if not os.path.exists(self.__dir__+'/visWVFs'):
