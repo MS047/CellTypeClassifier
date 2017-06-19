@@ -357,12 +357,12 @@ class DataManager():
 
 			bar = progressbar.ProgressBar(maxval=len(self.attributed_spikeSamples), \
 			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
-			print("Instantaneous Firing rates calcul in progress...")
+			print("\nInstantaneous Firing rates calcul in progress...")
 			bar.start()
 
 			for i, x in enumerate(self.attributed_spikeSamples):
 				bar.update(i+1)
-				sleep(0.1)
+				sleep(0.01)
 				UNIT = x[0]
 				if UNIT in self.goodUnits:
 					hist = np.histogram(x[1:], binEdges)
@@ -372,7 +372,7 @@ class DataManager():
 					self.IFRhistDic[UNIT]=hist[0]
 					self.IFRDic[UNIT]=conv
 			bar.finish()
-			print("Instantaneous Firing rates calculated.")
+			print("Instantaneous Firing rates calculated.\n")
 			self.IFRhist = np.asarray(self.IFRhist)
 			self.IFR = np.asarray(self.IFR)
 		return self.IFR, self.IFRDic
@@ -394,12 +394,12 @@ class DataManager():
 
 			bar = progressbar.ProgressBar(maxval=len(self.attributed_spikeTimes), \
 			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
-			print("Mean Firing rates calcul in progress...")
+			print("\nMean Firing rates calcul in progress...")
 			bar.start()
 
 			for i, x in enumerate(self.attributed_spikeTimes):
 				bar.update(i+1)
-				sleep(0.1)
+				sleep(0.01)
 				UNIT = x[0]
 				if x[0] in self.goodUnits:
 					# Remove 1min shanks without any spikes
@@ -415,7 +415,7 @@ class DataManager():
 					self.MFR.append(np.array([self.attributed_spikeTimes[i][0], float(len(self.attributed_spikeTimes[i][1:]))/recordLenWithSpikes]))
 					self.MFRDic[self.attributed_spikeTimes[i][0]] = float(len(self.attributed_spikeTimes[i][1:]))/recordLenWithSpikes
 			bar.finish()
-			print("Mean firing rate calculated.")
+			print("Mean firing rate calculated.\n")
 			self.MFR = np.asarray(self.MFR)
 		return self.MFR, self.MFRDic
 
@@ -453,19 +453,17 @@ class DataManager():
 			mask = np.ones_like(self.spike_samples, dtype=np.bool)
 
 			self.correlograms = _create_correlograms_array(n_units, winsize_bins)
-			print(" - CCG bins: ", winsize_bins)
+			#print(" - CCG bins: ", winsize_bins)
 
 			# The loop continues as long as there is at least one spike with
 			# a matching spike.
-			bar = progressbar.ProgressBar(maxval=len(mask), \
-			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
-			print("Crosscorrelograms calcul in progress...")
+			print("\nCrossCorrelograms calcul in progress...\n[Iteration", end = " ")
+			bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength)
 			bar.start()
 			i=0
 			while mask[:-shift].any():
 				bar.update(i+1)
 				i+=1
-				sleep(0.1)
 
 		        # Number of time samples between spike i and spike i+shift.
 				spike_diff = _diff_shifted(self.spike_samples, shift)
@@ -502,7 +500,7 @@ class DataManager():
 
 			if symmetrize==True:
 				self.correlograms = _symmetrize_correlograms(self.correlograms)
-			print("CrossCorrelograms computed.")
+			print("CrossCorrelograms computed.\n")
 			
 			if normalize==True:
 				self.correlograms = np.apply_along_axis(lambda x: x/np.sum(x) if np.sum(x)!=0 else x, 2, self.correlograms)
@@ -529,7 +527,15 @@ class DataManager():
 			self.ISIListDic = {}
 			binEdges = np.arange(0, window_size+bin_size, bin_size) # in seconds
 			alpha = getattr(scipy.stats, 'alpha')
+
+			bar = progressbar.ProgressBar(maxval=len(self.attributed_spikeTimes), \
+			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+			bar.start()
+			print("\nInterSpikeIntervals calcul in progress...")
+
 			for i, x in enumerate(self.attributed_spikeTimes):
+				bar.update(i+1)
+				sleep(0.01)
 				ISIlist = list(np.diff(self.attributed_spikeTimes[i][1:]))
 				ISIhist = np.histogram(ISIlist, binEdges)
 				ISIparams = np.array([np.mean(ISIlist), np.var(ISIlist), scipy.stats.skew(ISIlist)])
@@ -542,6 +548,8 @@ class DataManager():
 			if normalize==True:
 				self.ISI = np.apply_along_axis(lambda x: x/np.sum(x) if np.sum(x)!=0 else x, 1, self.ISI)
 
+			bar.finish()
+			print("InterSpikeIntervals computed.\n")
 
 		return self.ISI, self.ISIDic
 
@@ -690,11 +698,14 @@ class DataManager():
 				featuresList = []
 
 				while 1:
-					idx = input("\n\nPlease dial a feature to visualize - <MFR>, <IFR>, <CCG>, <ISI> or <WVF>; dial <d> if you are done: ")
+					idx = input("\n\nPlease dial a feature to visualize - <MFR>, <IFR>, <CCG>, <ISI>, <WVF> or <all>; dial <d> if you are done: ")
 					
 					if idx == "d":
 						break
-					if idx == 'MFR' or idx == 'IFR' or idx == 'CCG' or idx == 'ISI' or idx == 'WVF':
+					elif idx == 'all':
+						featuresList = ['MFR', 'IFR', 'CCG', 'ISI', 'WVF']
+						break
+					elif idx == 'MFR' or idx == 'IFR' or idx == 'CCG' or idx == 'ISI' or idx == 'WVF':
 						featuresList.append(idx)
 					else:
 						print("\nYou must dial <MFR>, <IFR>, <CCG>, <ISI> or <WVF>.")
@@ -772,6 +783,8 @@ class DataManager():
 
 
 			if "CCG" in featuresList:
+				if len(unitsList)>5:
+					print("/!\ Warning: Display of crosscorrelograms of more than 5 units may not be optimal. Try to plot your figure in several times.")
 				self.CrossCG(bin_size=bin_sizeCCG, window_size=window_sizeCCG, normalize = normalizeCCG, again=again)
 				plotsxticks = np.arange(-window_sizeCCG*1000/2, window_sizeCCG*1000/2+bin_sizeCCG*1000, bin_sizeCCG*1000)
 
@@ -868,6 +881,8 @@ class DataManager():
 
 
 			if "ISI" in featuresList:
+				if len(unitsList)>5:
+					print("/!\ Warning: Display of interspike intervals of more than 5 units may not be optimal. Try to plot your figure in several times.")
 				self.InterSI(bin_size=bin_sizeISI, window_size=window_sizeISI, normalize = True, again=again)
 				plotsxticks = np.arange(0, window_sizeISI*1000, bin_sizeISI*1000)
 				figISI, ISIaxis = plt.subplots(len(unitsList), 1)
