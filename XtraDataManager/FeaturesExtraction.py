@@ -36,7 +36,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 #matplotlib.style.use('fivethirtyeight')
 #matplotlib.style.use('ggplot')
-matplotlib.style.use('classic')
+#matplotlib.style.use('classic')
+matplotlib.style.use('dark_background')
 import dill
 import csv
 import os, sys
@@ -415,7 +416,7 @@ class DataManager():
 					self.MFR.append(np.array([self.attributed_spikeTimes[i][0], float(len(self.attributed_spikeTimes[i][1:]))/recordLenWithSpikes]))
 					self.MFRDic[self.attributed_spikeTimes[i][0]] = float(len(self.attributed_spikeTimes[i][1:]))/recordLenWithSpikes
 			bar.finish()
-			print("Mean firing rate calculated.\n")
+			print("Mean firing rates calculated.\n")
 			self.MFR = np.asarray(self.MFR)
 		return self.MFR, self.MFRDic
 
@@ -660,7 +661,7 @@ class DataManager():
 
 		return self.extractedFeatures
 
-	def visualize(self, unitsList=None, featuresList=None, SHOW=True, bin_sizeIFR=0.003, bin_sizeCCG=0.001, window_sizeCCG=0.1, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False):
+	def visualize(self, unitsList=None, featuresList=None, showMode=None, saveMode=True, bin_sizeIFR=0.003, bin_sizeCCG=0.001, window_sizeCCG=0.1, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False):
 		'''visualize() -> Visualization tool.
 		Argument1: list of units whose features need to be visualized (int or float). [unit1, unit2...]
 		Argument2: list of features to visualize (str). Can contain "IFR": Instantaneous Firing Rate, "MFR": Mean Firing Rate, "CCG": CrossCorreloGrams, "ISI" InterSpikeInterval, "WVF": weighted averaged templates.'''
@@ -668,11 +669,19 @@ class DataManager():
 		while 1:
 			self.extract_cIds(again=again)
 
-			if unitsList == None or unitsList == []:
+			if unitsList!=None and unitsList!=[]:
+				for i in unitsList:
+					if i not in self.goodUnits:
+						print("Some units provided in unitsList are not good units. For performance reasons, only good units are managed. Resetting unitsList.")
+						unitsList=[]
+
+			elif unitsList == None or unitsList == []:
 				unitsList = []
+                
+				print("Units classified as good: ", self.goodUnits.tolist())
 
 				while 1:
-					idx = input("\n\nPlease dial a unit index ; dial <d> if you are done: ")
+					idx = input("\n\nCurrent units to visualize: {}\nPlease dial a unit index ; dial <d> if you are done: ".format(unitsList))
 
 					if idx == "d":
 						break
@@ -682,9 +691,9 @@ class DataManager():
 							if idx in self.units:
 								if idx in self.goodUnits:
 									print("\nThis unit is classified as good.")
+									unitsList.append(idx)
 								if idx not in self.goodUnits:
 									print("\nThis unit is not classified as good.")
-								unitsList.append(idx)
 							else:
 								print("\nThis index is not detected in the unit indexes of this directory's data. Try another one.")
 						except:
@@ -694,7 +703,9 @@ class DataManager():
 					print("\nYou didn't provide any unit.")
 					EXIT = True
 
-			if (featuresList == None or featuresList == []) and EXIT == False:
+			if featuresList=='all':
+				featuresList = ['MFR', 'IFR', 'CCG', 'ISI', 'WVF']
+			elif (featuresList == None or featuresList == []) and EXIT == False:
 				featuresList = []
 
 				while 1:
@@ -715,7 +726,11 @@ class DataManager():
 					EXIT = True
 
 			if EXIT==True:
-				print("\n\nGoodbye, thanks for using XtraDataManager's visualization tool.")
+				if showMode=='all':
+					print("Features visualized.")
+					plt.show()
+					plt.close()
+				print("\nYou used XtraDataManager's visualization tool.\n")
 				break
 
 
@@ -731,7 +746,7 @@ class DataManager():
 				assert len(unitsListStr) == len(MFRList)
 
 				dfMFR = pd.DataFrame(data=MFRList, index=unitsListStr, columns=["Mean Firing rate (Hz)"])
-				axMFR = dfMFR.plot(kind='bar', rot=0, legend=False, width=0.1, linewidth=2, color=(0./255, 153./255, 0./255), edgecolor='k', hatch="-")
+				axMFR = dfMFR.plot(kind='bar', rot=0, legend=False, width=0.1, linewidth=2, color=(51./255, 153./255, 255./255), edgecolor='k', hatch="-")
 				axMFR.tick_params(labelsize=6, color='k', direction='out')
 				axMFR.set_xlabel('Cluster index', fontsize=10)
 				axMFR.set_ylabel('Mean Firing Rate (Hz)', fontsize=10)
@@ -741,14 +756,21 @@ class DataManager():
 					width = p.get_width()
 					axMFR.annotate('~'+str(round(p.get_height(), 3)), (p.get_x()+(width/2), p.get_height() + heightShift), size = 8, ha="center")
 				figMFR = axMFR.get_figure()
-				if not os.path.exists(self.__dir__+'/visMFRs'):
-					os.makedirs(self.__dir__+'/visMFRs')
-				figMFRpath = self.__dir__+'/visMFRs'+'/MFR'
-				for i in unitsListStr:
-					figMFRpath+=', '
-					figMFRpath+=i
-				figMFR.savefig(figMFRpath+'.eps')
-				figMFR.savefig(figMFRpath+'.png')
+
+				if showMode=='1':
+					plt.show()
+					plt.close()
+				elif showMode=='all':
+					pass
+				if saveMode==True:
+					if not os.path.exists(self.__dir__+'/visMFRs'):
+						os.makedirs(self.__dir__+'/visMFRs')
+					figMFRpath = self.__dir__+'/visMFRs'+'/MFR'
+					for i in unitsListStr:
+						figMFRpath+=', '
+						figMFRpath+=i
+					figMFR.savefig(figMFRpath+'.eps')
+					figMFR.savefig(figMFRpath+'.png')
 				
 				self.dfMFR = dfMFR
 				EXIT=True
@@ -768,15 +790,22 @@ class DataManager():
 				axIFR.set_ylabel('Instantaneous Firing Rate (y*'+str(round(1./bin_sizeIFR, 3))+'Hz)', fontsize=6)
 				axIFR.tick_params(labelsize=6, color='k', direction='out')
 				figIFR = axIFR.get_figure()
-				if not os.path.exists(self.__dir__+'/visIFRs'):
-					os.makedirs(self.__dir__+'/visIFRs')
-				figIFRpath = self.__dir__+'/visIFRs'+'/IFR'
-				unitsListStr = [str(i) for i in unitsList]
-				for i in unitsListStr:
-					figIFRpath+=', '
-					figIFRpath+=i
-				figIFR.savefig(figIFRpath+'.eps')
-				figIFR.savefig(figIFRpath+'.png')
+
+				if showMode=='1':
+					plt.show()
+					plt.close()
+				elif showMode=='all':
+					pass
+				if saveMode==True:
+					if not os.path.exists(self.__dir__+'/visIFRs'):
+						os.makedirs(self.__dir__+'/visIFRs')
+					figIFRpath = self.__dir__+'/visIFRs'+'/IFR'
+					unitsListStr = [str(i) for i in unitsList]
+					for i in unitsListStr:
+						figIFRpath+=', '
+						figIFRpath+=i
+					figIFR.savefig(figIFRpath+'.eps')
+					figIFR.savefig(figIFRpath+'.png')
 				
 				self.dfIFR = dfIFR
 				EXIT=True
@@ -821,19 +850,22 @@ class DataManager():
 									color = (102./255, 0./255, 204./255)
 								colorFlag+=1
 							else:
-								color = (0./255, 0./255, 0./255)
+								if matplotlib.rcParams['savefig.facecolor']=='black':
+									color = (255./255, 255./255, 255./255) # if matplotlib.style.use('black_background')
+								else:
+									color = (0./255, 0./255, 0./255) # if not matplotlib.style.use('black_background')
 							if plotType == 'bar':
 								CCGaxis.bar(plotsxticks,dfCCG[x][y], color = color, linewidth=0.2)
 							elif plotType == 'line':
 								CCGaxis.plot(plotsxticks,dfCCG[x][y], color = color)
-							CCGaxis.set_xlabel('dt (ms)', fontsize=6)
+							CCGaxis.set_xlabel('dt (ms)', fontsize=12)
 							CCGaxis.set_xlim((-window_sizeCCG*1000/2,window_sizeCCG*1000/2))
 							if normalizeCCG:
 								CCGaxis.set_ylabel('counts - normalized', fontsize=6)
 							else:
-								CCGaxis.set_ylabel('counts', fontsize=6)
-							CCGaxis.tick_params(labelsize=4, color='k', direction='out')
-							CCGaxis.set_title(str(x)+'-'+str(y),fontsize=8)
+								CCGaxis.set_ylabel('counts', fontsize=12)
+							CCGaxis.tick_params(labelsize=6, color='k', direction='out')
+							CCGaxis.set_title(str(x)+'-'+str(y),fontsize=16)
 				else:
 					colorFlag = 0	
 					for i, x in enumerate(unitsList):
@@ -866,15 +898,22 @@ class DataManager():
 							CCGaxis[i][j].set_title(str(x)+'-'+str(y),fontsize=8)
 				figCCG.tight_layout()
 
-				if not os.path.exists(self.__dir__+'/visCCGs'):
-					os.makedirs(self.__dir__+'/visCCGs')
-				figCCGpath = self.__dir__+'/visCCGs'+'/CCG'
-				unitsListStr = [str(i) for i in unitsList]
-				for i in unitsListStr:
-					figCCGpath+=', '
-					figCCGpath+=i
-				figCCG.savefig(figCCGpath+'.eps')
-				figCCG.savefig(figCCGpath+'.png')
+
+				if showMode=='1':
+					plt.show()
+					plt.close()
+				elif showMode=='all':
+					pass
+				if saveMode==True:
+					if not os.path.exists(self.__dir__+'/visCCGs'):
+						os.makedirs(self.__dir__+'/visCCGs')
+					figCCGpath = self.__dir__+'/visCCGs'+'/CCG'
+					unitsListStr = [str(i) for i in unitsList]
+					for i in unitsListStr:
+						figCCGpath+=', '
+						figCCGpath+=i
+					figCCG.savefig(figCCGpath+'.eps')
+					figCCG.savefig(figCCGpath+'.png')
 
 				self.dfCCG = dfCCG
 				EXIT=True
@@ -891,7 +930,7 @@ class DataManager():
 					mew, std, skew = self.ISIparamsDic[x][0], self.ISIparamsDic[x][1]**0.5, self.ISIparamsDic[x][2]
 					s = '1/mean~rate = %0.1f Hz\nCV = %0.2f \nSkewness = %0.3f' % (1./mew,std/mew,skew)
 					if len(unitsList)==1:
-						ISIaxis.bar(plotsxticks, self.ISIDic[x], color = 'r', linewidth=0.5)
+						ISIaxis.bar(plotsxticks, self.ISIDic[x], color = (51./255, 153./255, 255./255), linewidth=0.5)
 						ISIaxis.annotate(s,xy=(0.65, 0.6),xytext=None,xycoords='axes fraction',fontsize=12, color='k')
 						ISIaxis.set_xlim([0,window_sizeISI*1000]) # milliseconds
 						ISIaxis.set_xlabel('ISI (ms)', fontsize=12)
@@ -911,22 +950,32 @@ class DataManager():
 							color = (102./255, 0./255, 204./255)
 						colorFlag+=1
 						ISIaxis[i].bar(plotsxticks, self.ISIDic[x], color = color, linewidth=0.5)
-						ISIaxis[i].annotate(s,xy=(0.65, 0.6),xytext=None,xycoords='axes fraction',fontsize=6, color='k')
+						if matplotlib.rcParams['savefig.facecolor']=='black':
+							ISIaxis[i].annotate(s,xy=(0.65, 0.6),xytext=None,xycoords='axes fraction',fontsize=6, color='k')
+						else:
+							ISIaxis[i].annotate(s,xy=(0.65, 0.6),xytext=None,xycoords='axes fraction',fontsize=6, color='k')
 						ISIaxis[i].set_xlim([0,window_sizeISI*1000]) # milliseconds
 						ISIaxis[i].set_xlabel('ISI (ms)', fontsize=6)
 						ISIaxis[i].set_ylabel('Counts', fontsize=6)
 						ISIaxis[i].set_title(str(x),fontsize=12, fontweight='bold')
 						ISIaxis[i].tick_params(labelsize=6, color='k', direction='out')
 				figISI.tight_layout()
-				if not os.path.exists(self.__dir__+'/visISIs'):
-					os.makedirs(self.__dir__+'/visISIs')
-				figISIpath = self.__dir__+'/visISIs'+'/ISI'
-				unitsListStr = [str(i) for i in unitsList]
-				for i in unitsListStr:
-					figISIpath+=', '
-					figISIpath+=i
-				figISI.savefig(figISIpath+'.eps')
-				figISI.savefig(figISIpath+'.png')
+
+				if showMode=='1':
+					plt.show()
+					plt.close()
+				elif showMode=='all':
+					pass
+				if saveMode==True:
+					if not os.path.exists(self.__dir__+'/visISIs'):
+						os.makedirs(self.__dir__+'/visISIs')
+					figISIpath = self.__dir__+'/visISIs'+'/ISI'
+					unitsListStr = [str(i) for i in unitsList]
+					for i in unitsListStr:
+						figISIpath+=', '
+						figISIpath+=i
+					figISI.savefig(figISIpath+'.eps')
+					figISI.savefig(figISIpath+'.png')
 				EXIT=True
 
 			if "WVF" in featuresList:
@@ -934,28 +983,31 @@ class DataManager():
 				WVFDic = {unit: self.attributed_spikeTemplatesDic[unit] for unit in unitsList}
 
 				dfWVF = pd.DataFrame(WVFDic)
-				axWVF = dfWVF.plot(x_compat=True, colormap='prism')
+				axWVF = dfWVF.plot(x_compat=True)
 				axWVF.set_ylabel('??', fontsize=10)
 				axWVF.set_xlabel('Time samples (30kHz)', fontsize=10)
 				axWVF.tick_params(labelsize=6, color='k', direction='out')
 				figWVF = axWVF.get_figure()
-				if not os.path.exists(self.__dir__+'/visWVFs'):
-					os.makedirs(self.__dir__+'/visWVFs')
-				figWVFpath = self.__dir__+'/visWVFs'+'/WVF'
-				unitsListStr = [str(i) for i in unitsList]
-				for i in unitsListStr:
-					figWVFpath+=', '
-					figWVFpath+=i
-				figWVF.savefig(figWVFpath+'.eps')
-				figWVF.savefig(figWVFpath+'.png')
+
+				if showMode=='1':
+					plt.show()
+					plt.close()
+				elif showMode=='all':
+					pass
+				if saveMode==True:
+					if not os.path.exists(self.__dir__+'/visWVFs'):
+						os.makedirs(self.__dir__+'/visWVFs')
+					figWVFpath = self.__dir__+'/visWVFs'+'/WVF'
+					unitsListStr = [str(i) for i in unitsList]
+					for i in unitsListStr:
+						figWVFpath+=', '
+						figWVFpath+=i
+					figWVF.savefig(figWVFpath+'.eps')
+					figWVF.savefig(figWVFpath+'.png')
 
 				self.dfWVF = dfWVF
 				EXIT=True
 
-
-			if SHOW == True:
-				#plt.show()
-				pass
 	
 	def save_DM(self, filename=None, OBJECT=False, UNPACKED=True):
 		'''save() -> saving a DataManager() instance. Argument: filename, has to be of the form "xxxxxxx.pkl".'''
