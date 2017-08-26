@@ -36,12 +36,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 #matplotlib.style.use('fivethirtyeight')
 #matplotlib.style.use('ggplot')
-#matplotlib.style.use('classic')
-matplotlib.style.use('dark_background')
+matplotlib.style.use('classic')
+#matplotlib.style.use('dark_background')
 import dill
 import csv
 import os, sys
-sys.path.append("/Users/maximebeau/phy")
+#sys.path.append("/Users/maximebeau/phy")
+import phy
 from phy.utils._types import _as_array # phy, kwikteam
 from phy.io.array import _index_of, _unique # phy, kwikteam
 
@@ -113,7 +114,7 @@ class DataManager():
 	'''Has to be informed of the directory of kilosort output (files reshaped by phy).
 		The directory can be provided as argument. If no argument is provided, the used directory is the current working directory.
 
-		methods() -> attributes:
+		methods() -> respective generated attributes:
 
 		chdir() -> .__dir__: directory to seek for data and generate plots.
 
@@ -338,7 +339,7 @@ class DataManager():
 			print("Spikes templates attributed.")
 		return self.attributed_spikeTemplatesIdx, self.attributed_spikeTemplates, self.attributed_spikeTemplatesDic
 
-	def InstFR(self, binsize = 0.003, sd = 10, again=False):
+	def InstFR(self, binsize = 0.003, sd = 10, again=False, convolve=True):
 		'''InstFR() -> .IFR: Instantaneous Firing rate, lists of n_units np arrays of the form [[unit_idx1, IFR1, IFR2...IFRn], ...].
 		Binsize is in seconds.'''
 		try:
@@ -350,7 +351,7 @@ class DataManager():
 			self.attribute_spikeSamples_Times(again=again)
 			gaussian = signal.gaussian(90, sd)
 			self.IFRhist = self.attributed_spikeSamples.copy()
-			self.IFR = self.attributed_spikeSamples.copy()
+			self.IFRconv = self.attributed_spikeSamples.copy()
 			self.IFRhistDic = {}
 			self.IFRDic = {}
 			binsize*=self.sample_rate
@@ -369,13 +370,19 @@ class DataManager():
 					hist = np.histogram(x[1:], binEdges)
 					conv = np.convolve(hist[0], gaussian)
 					self.IFRhist[i] = np.append(UNIT, hist[0])
-					self.IFR[i] = np.append(UNIT, conv)
+					self.IFRconv[i] = np.append(UNIT, conv)
 					self.IFRhistDic[UNIT]=hist[0]
-					self.IFRDic[UNIT]=conv
+					self.IFRconvDic[UNIT]=conv
 			bar.finish()
 			print("Instantaneous Firing rates calculated.\n")
 			self.IFRhist = np.asarray(self.IFRhist)
-			self.IFR = np.asarray(self.IFR)
+			self.IFRconv = np.asarray(self.IFRconv)
+
+			if convolve==True:
+				self.IFR = self.IFRconv
+			else:
+				self.IFR=self.IFRhist
+				
 		return self.IFR, self.IFRDic
 
 	def MeanFR(self, again=False):
@@ -395,7 +402,7 @@ class DataManager():
 
 			bar = progressbar.ProgressBar(maxval=len(self.attributed_spikeTimes), \
 			widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
-			print("\nMean Firing rates calcul in progress...")
+			print("\nMean firing rates calcul in progress...")
 			bar.start()
 
 			for i, x in enumerate(self.attributed_spikeTimes):
@@ -661,10 +668,15 @@ class DataManager():
 
 		return self.extractedFeatures
 
-	def visualize(self, unitsList=None, featuresList=None, showMode=None, saveMode=True, bin_sizeIFR=0.003, bin_sizeCCG=0.001, window_sizeCCG=0.1, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False):
+	def visualize(self, unitsList=None, featuresList=None, showMode=None, saveMode=True, bin_sizeIFR=0.003, bin_sizeCCG=0.001, window_sizeCCG=0.1, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False, mpl_style='classic'):
 		'''visualize() -> Visualization tool.
 		Argument1: list of units whose features need to be visualized (int or float). [unit1, unit2...]
 		Argument2: list of features to visualize (str). Can contain "IFR": Instantaneous Firing Rate, "MFR": Mean Firing Rate, "CCG": CrossCorreloGrams, "ISI" InterSpikeInterval, "WVF": weighted averaged templates.'''
+		matplotlib.style.use(mpl_style)
+
+		if type(featuresList)==int or type(featuresList)==float:
+			featuresList=list(featuresList)
+
 		EXIT = False
 		while 1:
 			self.extract_cIds(again=again)
@@ -672,7 +684,7 @@ class DataManager():
 			if unitsList!=None and unitsList!=[]:
 				for i in unitsList:
 					if i not in self.goodUnits:
-						print("Some units provided in unitsList are not good units. For performance reasons, only good units are managed. Resetting unitsList.")
+						print("Some units provided in unitsList are not good units. For performance reasons, only good units are managed. Resetting unitsList - provide other units in the coming lines please.")
 						unitsList=[]
 
 			elif unitsList == None or unitsList == []:
@@ -693,7 +705,7 @@ class DataManager():
 									print("\nThis unit is classified as good.")
 									unitsList.append(idx)
 								if idx not in self.goodUnits:
-									print("\nThis unit is not classified as good.")
+									print("\nThis unit is NOT classified as good.")
 							else:
 								print("\nThis index is not detected in the unit indexes of this directory's data. Try another one.")
 						except:
@@ -855,9 +867,9 @@ class DataManager():
 								else:
 									color = (0./255, 0./255, 0./255) # if not matplotlib.style.use('black_background')
 							if plotType == 'bar':
-								CCGaxis.bar(plotsxticks,dfCCG[x][y], color = color, linewidth=0.2)
+								CCGaxis.bar(plotsxticks,dfCCG[x][y], color = color, edgecolor = color, linewidth=0)
 							elif plotType == 'line':
-								CCGaxis.plot(plotsxticks,dfCCG[x][y], color = color)
+								CCGaxis.plot(plotsxticks,dfCCG[x][y], color = color, edgecolor = color, linewidth=0)
 							CCGaxis.set_xlabel('dt (ms)', fontsize=12)
 							CCGaxis.set_xlim((-window_sizeCCG*1000/2,window_sizeCCG*1000/2))
 							if normalizeCCG:
@@ -883,9 +895,12 @@ class DataManager():
 									color = (102./255, 0./255, 204./255)
 								colorFlag+=1
 							else:
-								color = (0./255, 0./255, 0./255)
+								if matplotlib.rcParams['savefig.facecolor']=='black':
+									color = (255./255, 255./255, 255./255) # if matplotlib.style.use('black_background')
+								else:
+									color = (0./255, 0./255, 0./255) # if not matplotlib.style.use('black_background')
 							if plotType == 'bar':
-								CCGaxis[i][j].bar(plotsxticks,dfCCG[x][y], color = color, linewidth=0.2)
+								CCGaxis[i][j].bar(plotsxticks,dfCCG[x][y], color = color, edgecolor = color, linewidth=0)
 							elif plotType == 'line':
 								CCGaxis[i][j].plot(plotsxticks,dfCCG[x][y], color = color)
 							CCGaxis[i][j].set_xlabel('dt (ms)', fontsize=6)
@@ -1008,8 +1023,13 @@ class DataManager():
 				self.dfWVF = dfWVF
 				EXIT=True
 
+		plt.close() # Prevent figures accumulation in the background
+
 	
-	def save_DM(self, filename=None, OBJECT=False, UNPACKED=True):
+	def save_DM(self, filename=None, OBJECT=False, UNPACKED=True, 
+		savingList=["sample_rate", "spike_samples", "spike_times", "spike_clusters", "units", "goodUnits", 
+		"nanUnits", "usedUnits", "spike_templates", "templates", "attributed_spikeSamples", "attributed_spikeTimes", 
+		"attributed_spikeTemplatesIdx", "attributed_spikeTemplates", "IFR", "MFR", "CCG", "ISI", "extractedFeatures"]):
 		'''save() -> saving a DataManager() instance. Argument: filename, has to be of the form "xxxxxxx.pkl".'''
 		if not os.path.exists(self.__dir__+'/save_DManager'):
 			os.makedirs(self.__dir__+'/save_DManager')
@@ -1032,208 +1052,227 @@ class DataManager():
 			print("Crosscorrelograms calcul in progress...")
 			bar.start()
 			i=0
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/sample_rate.npy", np.array([self.sample_rate]))
-				np.savetxt(directory+"/sample_rate.txt", np.array([self.sample_rate]))
-				scipy.io.savemat(directory+"/sample_rate.mat", mdict={'sample_rate': np.asarray(self.sample_rate)})
-			except:
-				print("No \".sample_rate\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/spike_samples.npy", self.spike_samples)
-				np.savetxt(directory+"/spike_samples.txt", self.spike_samples)
-				scipy.io.savemat(directory+"/spike_samples.mat", mdict={'spike_samples': self.spike_samples})
-			except:
-				print("No \".spike_samples\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/spike_times.npy", self.spike_times)
-				np.savetxt(directory+"/spike_times.txt", self.spike_times)
-				scipy.io.savemat(directory+"/spike_times.mat", mdict={'spike_times': self.spike_times})
-			except:
-				print("No \".spike_times\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/spike_clusters.npy", self.spike_clusters)
-				np.savetxt(directory+"/spike_clusters.txt", self.spike_clusters)
-				scipy.io.savemat(directory+"/spike_clusters.mat", mdict={'spike_clusters': self.spike_clusters})
-			except:
-				print("No \".spike_clusters\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/units.npy", self.units)
-				np.savetxt(directory+"/units.txt", self.units)
-				scipy.io.savemat(directory+"/units.mat", mdict={'units': self.units})
-			except:
-				print("No \".units\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/goodUnits.npy", self.goodUnits)
-				np.savetxt(directory+"/goodUnits.txt", self.goodUnits)
-				scipy.io.savemat(directory+"/goodUnits.mat", mdict={'goodUnits': self.goodUnits})
-			except:
-				print("No \".goodUnits\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/nanUnits.npy", self.nanUnits)
-				np.savetxt(directory+"/nanUnits.txt", self.nanUnits)
-				scipy.io.savemat(directory+"/nanUnits.mat", mdict={'nanUnits': self.nanUnits})
-			except:
-				print("No \".nanUnits\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/usedUnits.npy", self.usedUnits)
-				np.savetxt(directory+"/usedUnits.txt", self.usedUnits)
-				scipy.io.savemat(directory+"/usedUnits.mat", mdict={'usedUnits': self.usedUnits})
-			except:
-				print("No \".usedUnits\" attribute found. It wasn't required by any analysis performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/spike_templates.npy", self.spike_templates)
-				np.savetxt(directory+"/spike_templates.txt", self.spike_templates)
-				scipy.io.savemat(directory+"/spike_templates.mat", mdict={'spike_templates': self.spike_templates})
-			except:
-				print("No \".spike_templates\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/templates.npy", self.templates)
-				np.savetxt(directory+"/templates.txt", self.templates)
-				scipy.io.savemat(directory+"/templates.mat", mdict={'sample_rate': self.templates})
-			except:
-				print("No \".templates\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/attributed_spikeSamples.npy", np.array(self.attributed_spikeSamples))
-				with open(directory+"/attributed_spikeSamples.txt", 'wb') as output:
-					for array in self.attributed_spikeSamples:
-						np.savetxt(output, array)
-				scipy.io.savemat(directory+"/attributed_spikeSamples.mat", mdict={'attributed_spikeSamples': np.asarray(self.attributed_spikeSamples)})
-			except:
-				print("No \".attributed_spikeSamples\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/attributed_spikeTimes.npy", np.array(self.attributed_spikeTimes))
-				with open(directory+"/attributed_spikeTimes.txt", 'wb') as output:
-					for array in self.attributed_spikeTimes:
-						np.savetxt(output, array)
-				scipy.io.savemat(directory+"/attributed_spikeTimes.mat", mdict={'attributed_spikeTimes': np.asarray(self.attributed_spikeTimes)})
-			except:
-				print("No \".attributed_spikeTimes\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/attributed_spikeTemplatesIdx.npy", np.array(self.attributed_spikeTemplatesIdx))
-				with open(directory+"/attributed_spikeTemplatesIdx.txt", 'wb') as output:
-					for array in self.attributed_spikeTemplatesIdx:
-						np.savetxt(output, array)
-				scipy.io.savemat(directory+"/attributed_spikeTemplatesIdx.mat", mdict={'attributed_spikeTemplatesIdx': np.asarray(self.attributed_spikeTemplatesIdx)})
-			except:
-				print("No \".attributed_spikeTemplatesIdx\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/attributed_spikeTemplates.npy", np.array(self.attributed_spikeTemplates))
-				with open(directory+"/attributed_spikeTemplates.txt", 'wb') as output:
-					for array in self.attributed_spikeTemplates:
-						np.savetxt(output, array)
-				scipy.io.savemat(directory+"/attributed_spikeTemplates.mat", mdict={'attributed_spikeTemplates': np.asarray(self.attributed_spikeTemplates)})
-			except:
-				print("No \".attributed_spikeTemplates\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/IFR.npy", self.IFR)
-				np.savetxt(directory+"/IFR.txt", self.IFR)
-				scipy.io.savemat(directory+"/IFR.mat", mdict={'sample_rate': self.IFR})
-			except:
-				print("No \".IFR\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/MFR.npy", self.MFR)
-				np.savetxt(directory+"/MFR.txt", self.MFR)
-				scipy.io.savemat(directory+"/MFR.mat", mdict={'MFR': self.MFR})
-			except:
-				print("No \".MFR\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/CCG.npy", self.CCG)
-				with open(directory+"/CCG.txt", 'wb') as outfile:
-				    for i in range(len(self.CCG)):
-				        np.savetxt(outfile, self.CCG[i])   
-				scipy.io.savemat(directory+"/CCG.mat", mdict={'CCG': self.CCG})
-			except:
-				print("No \".CCG\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/ISI.npy", self.ISI)
-				np.savetxt(directory+"/ISI.txt", self.ISI)
-				scipy.io.savemat(directory+"/ISI.mat", mdict={'ISI': self.ISI})
-			except:
-				print("No \".ISI\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
-			try:
-				bar.update(i+1)
-				i+=1
-				sleep(0.1)
-				np.save(directory+"/extractedFeatures.npy", self.extractedFeatures)
-				np.savetxt(directory+"/extractedFeatures.txt", self.extractedFeatures)
-				scipy.io.savemat(directory+"/extractedFeatures.mat", mdict={'extractedFeatures': self.extractedFeatures})
-			except:
-				print("No \".extractedFeatures\" attribute found. It wasn't required by any analysis previously performed.")
-				pass
+			if "sample_rate" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/sample_rate.npy", np.array([self.sample_rate]))
+					np.savetxt(directory+"/sample_rate.txt", np.array([self.sample_rate]))
+					scipy.io.savemat(directory+"/sample_rate.mat", mdict={'sample_rate': np.asarray(self.sample_rate)})
+				except:
+					print("No \".sample_rate\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "spike_samples" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/spike_samples.npy", self.spike_samples)
+					np.savetxt(directory+"/spike_samples.txt", self.spike_samples)
+					scipy.io.savemat(directory+"/spike_samples.mat", mdict={'spike_samples': self.spike_samples})
+				except:
+					print("No \".spike_samples\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "spike_times" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/spike_times.npy", self.spike_times)
+					np.savetxt(directory+"/spike_times.txt", self.spike_times)
+					scipy.io.savemat(directory+"/spike_times.mat", mdict={'spike_times': self.spike_times})
+				except:
+					print("No \".spike_times\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "spike_clusters" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/spike_clusters.npy", self.spike_clusters)
+					np.savetxt(directory+"/spike_clusters.txt", self.spike_clusters)
+					scipy.io.savemat(directory+"/spike_clusters.mat", mdict={'spike_clusters': self.spike_clusters})
+				except:
+					print("No \".spike_clusters\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "units" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/units.npy", self.units)
+					np.savetxt(directory+"/units.txt", self.units)
+					scipy.io.savemat(directory+"/units.mat", mdict={'units': self.units})
+				except:
+					print("No \".units\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "goodUnits" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/goodUnits.npy", self.goodUnits)
+					np.savetxt(directory+"/goodUnits.txt", self.goodUnits)
+					scipy.io.savemat(directory+"/goodUnits.mat", mdict={'goodUnits': self.goodUnits})
+				except:
+					print("No \".goodUnits\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "nanUnits" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/nanUnits.npy", self.nanUnits)
+					np.savetxt(directory+"/nanUnits.txt", self.nanUnits)
+					scipy.io.savemat(directory+"/nanUnits.mat", mdict={'nanUnits': self.nanUnits})
+				except:
+					print("No \".nanUnits\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "usedUnits" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/usedUnits.npy", self.usedUnits)
+					np.savetxt(directory+"/usedUnits.txt", self.usedUnits)
+					scipy.io.savemat(directory+"/usedUnits.mat", mdict={'usedUnits': self.usedUnits})
+				except:
+					print("No \".usedUnits\" attribute found. It wasn't required by any analysis performed.")
+					pass
+			if "spike_templates" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/spike_templates.npy", self.spike_templates)
+					np.savetxt(directory+"/spike_templates.txt", self.spike_templates)
+					scipy.io.savemat(directory+"/spike_templates.mat", mdict={'spike_templates': self.spike_templates})
+				except:
+					print("No \".spike_templates\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "templates" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/templates.npy", self.templates)
+					np.savetxt(directory+"/templates.txt", self.templates)
+					scipy.io.savemat(directory+"/templates.mat", mdict={'sample_rate': self.templates})
+				except:
+					print("No \".templates\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "attributed_spikeSamples" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/attributed_spikeSamples.npy", np.array(self.attributed_spikeSamples))
+					with open(directory+"/attributed_spikeSamples.txt", 'wb') as output:
+						for array in self.attributed_spikeSamples:
+							np.savetxt(output, array)
+					scipy.io.savemat(directory+"/attributed_spikeSamples.mat", mdict={'attributed_spikeSamples': np.asarray(self.attributed_spikeSamples)})
+				except:
+					print("No \".attributed_spikeSamples\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "attributed_spikeTimes" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/attributed_spikeTimes.npy", np.array(self.attributed_spikeTimes))
+					with open(directory+"/attributed_spikeTimes.txt", 'wb') as output:
+						for array in self.attributed_spikeTimes:
+							np.savetxt(output, array)
+					scipy.io.savemat(directory+"/attributed_spikeTimes.mat", mdict={'attributed_spikeTimes': np.asarray(self.attributed_spikeTimes)})
+				except:
+					print("No \".attributed_spikeTimes\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "attributed_spikeTemplatesIdx" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/attributed_spikeTemplatesIdx.npy", np.array(self.attributed_spikeTemplatesIdx))
+					with open(directory+"/attributed_spikeTemplatesIdx.txt", 'wb') as output:
+						for array in self.attributed_spikeTemplatesIdx:
+							np.savetxt(output, array)
+					scipy.io.savemat(directory+"/attributed_spikeTemplatesIdx.mat", mdict={'attributed_spikeTemplatesIdx': np.asarray(self.attributed_spikeTemplatesIdx)})
+				except:
+					print("No \".attributed_spikeTemplatesIdx\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "attributed_spikeTemplates" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/attributed_spikeTemplates.npy", np.array(self.attributed_spikeTemplates))
+					with open(directory+"/attributed_spikeTemplates.txt", 'wb') as output:
+						for array in self.attributed_spikeTemplates:
+							np.savetxt(output, array)
+					scipy.io.savemat(directory+"/attributed_spikeTemplates.mat", mdict={'attributed_spikeTemplates': np.asarray(self.attributed_spikeTemplates)})
+				except:
+					print("No \".attributed_spikeTemplates\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "IFR" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/IFR.npy", self.IFR)
+					np.savetxt(directory+"/IFR.txt", self.IFR)
+					scipy.io.savemat(directory+"/IFR.mat", mdict={'sample_rate': self.IFR})
+				except:
+					print("No \".IFR\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "MFR" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/MFR.npy", self.MFR)
+					np.savetxt(directory+"/MFR.txt", self.MFR)
+					scipy.io.savemat(directory+"/MFR.mat", mdict={'MFR': self.MFR})
+				except:
+					print("No \".MFR\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "CCG" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/CCG.npy", self.CCG)
+					with open(directory+"/CCG.txt", 'wb') as outfile:
+					    for i in range(len(self.CCG)):
+					        np.savetxt(outfile, self.CCG[i])   
+					scipy.io.savemat(directory+"/CCG.mat", mdict={'CCG': self.CCG})
+				except:
+					print("No \".CCG\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "ISI" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/ISI.npy", self.ISI)
+					np.savetxt(directory+"/ISI.txt", self.ISI)
+					scipy.io.savemat(directory+"/ISI.mat", mdict={'ISI': self.ISI})
+				except:
+					print("No \".ISI\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
+			if "extractedFeatures" in savingList:
+				try:
+					bar.update(i+1)
+					i+=1
+					sleep(0.1)
+					np.save(directory+"/extractedFeatures.npy", self.extractedFeatures)
+					np.savetxt(directory+"/extractedFeatures.txt", self.extractedFeatures)
+					scipy.io.savemat(directory+"/extractedFeatures.mat", mdict={'extractedFeatures': self.extractedFeatures})
+				except:
+					print("No \".extractedFeatures\" attribute found. It wasn't required by any analysis previously performed.")
+					pass
 			bar.finish()
-			print("DataManager attributes unpacked and saved as text files.")
+			print("DataManager attributes unpacked and saved as numpy, text and matlab files.")
 
 	def compute_all_default_and_save(self):
 		self.extractFeatures()

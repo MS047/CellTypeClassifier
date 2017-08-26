@@ -1,5 +1,8 @@
 from distutils.core import setup
 # from setuptools import setup
+
+requires=['numpy', 'scipy', 'random', 'time', 'progressbar', 'pandas', 'matplotlib', 'dill', 'csv', 'os', 'sys', 'phy', 'itertools', 'mpl_toolkits', 'sklearn']
+
 setup(
   name = 'XtraDataManager',
   packages = ['XtraDataManager'], # this must be the same as the name above
@@ -11,4 +14,5 @@ setup(
   download_url = 'https://github.com/MS047/XtraDataManager/archive/0.3.tar.gz', # I'll explain this in a second
   keywords = ['Kilosort', 'Phy', 'Classifier', 'sklearn', 'Extracellular', 'Spike Sorting'], # arbitrary keywords
   classifiers = [],
+  install_requires = requires
 )
