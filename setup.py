@@ -1,5 +1,5 @@
 from setuptools import setup
-# from setuptools import setup
+# from distutils.core import setup
 
 requires=['numpy', 'scipy', 'progressbar', 'pandas', 'matplotlib', 'dill', 'csv', 'phy', 'itertools', 'mpl_toolkits', 'sklearn']
 
@@ -15,5 +15,4 @@ setup(
   keywords = ['XtraDataManager', 'Phy', 'Classifier', 'sklearn', 'Extracellular', 'Spike Sorting', 'units', 'cell type'], # arbitrary keywords
   classifiers = ['Development Status :: 3 - Alpha', 'Intended Audience :: Science/Research', 'License :: OSI Approved :: MIT License', 'Programming Language :: Python :: 3.5', 'Environment :: Console', 'Natural Language :: English'],
   install_requires = requires,
-  python_requires = '>=3'
 )

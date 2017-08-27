@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 
 import os, sys
-sys.path.append("/Users/maximebeau/phy")
+import phy
 from phy.utils._types import _as_array # phy, kwikteam
 from phy.io.array import _index_of, _unique # phy, kwikteam
 
