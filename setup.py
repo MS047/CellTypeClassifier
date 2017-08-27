@@ -6,7 +6,7 @@ requires=['numpy', 'scipy', 'random', 'time', 'progressbar', 'pandas', 'matplotl
 setup(
   name = 'XtraDataManager',
   packages = ['XtraDataManager'], # this must be the same as the name above
-  version = '0.3',
+  version = '1.0',
   description = 'Kilosort/phy generated extracellular data managment, including supervised and unsupervised classification of units, in order to sort them by cell type.',
   author = 'Maxime Beau',
   author_email = 'm.beau047@gmail.com',

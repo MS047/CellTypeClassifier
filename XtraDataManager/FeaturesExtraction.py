@@ -353,7 +353,7 @@ class DataManager():
 			self.IFRhist = self.attributed_spikeSamples.copy()
 			self.IFRconv = self.attributed_spikeSamples.copy()
 			self.IFRhistDic = {}
-			self.IFRDic = {}
+			self.IFRconvDic = {}
 			binsize*=self.sample_rate
 			binEdges = np.arange(0, self.spike_samples[-1], binsize)
 

@@ -19,4 +19,4 @@ Thanks to the « CellTypeFinder » class, XtraDataManager’s pipeline is embe
 XtraDataManager is a free software implemented in Python 3.5, and can be found on GitHub at https://github.com/MS047/XtraDataManager. A tutorial can be found at the address 
 
 
-Tutorial used to upload on pip: http://peterdowns.com/posts/first-time-with-pypi.html
+Tutorial used to upload a python library from a Github repository on pip: http://peterdowns.com/posts/first-time-with-pypi.html
