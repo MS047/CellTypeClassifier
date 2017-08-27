@@ -1,6 +1,6 @@
 numpy
 scipy
-progressbar
+progressbar2
 pandas
 matplotlib
 dill
