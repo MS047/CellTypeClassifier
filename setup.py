@@ -1,7 +1,7 @@
 from setuptools import setup
 # from distutils.core import setup
 
-requires=['numpy', 'scipy', 'progressbar', 'pandas', 'matplotlib', 'dill', 'csv', 'phy', 'itertools', 'mpl_toolkits', 'sklearn']
+requires=['numpy', 'scipy', 'progressbar2', 'pandas', 'matplotlib', 'dill', 'csv', 'phy', 'itertools', 'mpl_toolkits', 'sklearn']
 
 setup(
   name = 'XtraDataManager',
