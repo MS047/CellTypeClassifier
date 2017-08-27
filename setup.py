@@ -1,7 +1,7 @@
-from distutils.core import setup
+from setuptools import setup
 # from setuptools import setup
 
-requires=['numpy', 'scipy', 'random', 'time', 'progressbar', 'pandas', 'matplotlib', 'dill', 'csv', 'os', 'sys', 'phy', 'itertools', 'mpl_toolkits', 'sklearn']
+requires=['numpy', 'scipy', 'time', 'progressbar', 'pandas', 'matplotlib', 'dill', 'csv', 'os', 'sys', 'phy', 'itertools', 'mpl_toolkits', 'sklearn']
 
 setup(
   name = 'XtraDataManager',
@@ -12,7 +12,8 @@ setup(
   author_email = 'm.beau047@gmail.com',
   url = 'https://github.com/MS047/XtraDataManager', # use the URL to the github repo
   download_url = 'https://github.com/MS047/XtraDataManager/archive/0.3.tar.gz', # I'll explain this in a second
-  keywords = ['Kilosort', 'Phy', 'Classifier', 'sklearn', 'Extracellular', 'Spike Sorting'], # arbitrary keywords
-  classifiers = [],
-  install_requires = requires
+  keywords = ['XtraDataManager', 'Phy', 'Classifier', 'sklearn', 'Extracellular', 'Spike Sorting', 'units', 'cell type'], # arbitrary keywords
+  classifiers = ['Development Status :: 3 - Alpha', 'Intended Audience :: Science/Research', 'License :: OSI Approved :: MIT License', 'Programming Language :: Python :: 3.5', 'Environment :: Console', 'Natural Language :: English'],
+  install_requires = requires,
+  python_requires = '>=3'
 )
