@@ -51,7 +51,7 @@ def smoothCCG(CCG, win=13, pol=2):
 	import scipy.signal as signal
 	return signal.savgol_filter(CCG, win, pol)
 
-def plotCCGTEST(data, i, bin_sizeCCG=0.001, window_sizeCCG=0.15, win=13, pol=2):
+def plotCCGTEST(data, i, bin_sizeCCG=0.0002, window_sizeCCG=0.15, win=13, pol=2):
         import matplotlib.pyplot as plt
         import numpy as np
         idx = np.where(data.units==i)[0][0]
@@ -344,6 +344,11 @@ class DataManager():
 		'''InstFR() -> .IFR: Instantaneous Firing rate, lists of n_units np arrays of the form [[unit_idx1, IFR1, IFR2...IFRn], ...].
 		Binsize is in seconds.'''
 		try:
+			self.IFR = np.load(self.__dir__+"/IFRarray_bin{}_sd{}.npy".format(binsize, sd))
+		except: # No CCG file has ever been saved with these window and bin values
+			pass
+
+		try:
 			print("IFR already calculated. List length:", len(self.IFR))
 			if again==True:
 				if input(" -- Calcul again? Dial <anything> for yes, <enter> for no: "):
@@ -383,11 +388,18 @@ class DataManager():
 				self.IFR = self.IFRconv
 			else:
 				self.IFR=self.IFRhist
+
+			np.save(self.__dir__+"/IFRarray_bin{}_sd{}.npy".format(binsize, sd), self.IFR)
 				
-		return self.IFR, self.IFRDic
+		return self.IFR
 
 	def MeanFR(self, again=False):
 		'''MeanFR() -> .MFR: Mean Firing rate, lists of n_units np arrays of the form [np.array([unit_idx1, MFR]), ...]'''
+		try:
+			self.MFR = np.load(self.__dir__+"/MFRarray.npy")
+		except: # No CCG file has ever been saved with these window and bin values
+			pass
+
 		try:
 			print("MFR already calculated. List length:", len(self.MFR))
 			if again==True:
@@ -412,7 +424,7 @@ class DataManager():
 				UNIT = x[0]
 				if x[0] in self.goodUnits:
 					# Remove 1min shanks without any spikes
-					shanksSize = 60 # seconds
+					shanksSize = 1 # seconds
 					recordLenWithSpikes = 0
 					for t in range(int(recordLen/shanksSize)):
 						shank = (t*shanksSize, (t+1)*shanksSize)
@@ -426,12 +438,18 @@ class DataManager():
 			bar.finish()
 			print("Mean firing rates calculated.\n")
 			self.MFR = np.asarray(self.MFR)
+			np.save(self.__dir__+"/MFRarray.npy", self.MFR)
 		return self.MFR, self.MFRDic
 
-	def CrossCG(self, bin_size=0.001, window_size=0.1, symmetrize=True, normalize = True, again=False):
-		'''CCG() -> .CCG: all crossCorrelograms in a n_units x n_units x winsize_bins matrix.By default, bin_size=0.001 and window_size=0.080, in seconds.'''
+	def CrossCG(self, bin_size=0.0002, window_size=0.1, symmetrize=True, normalize = True, again=False):
+		'''CCG() -> .CCG: all crossCorrelograms in a n_units x n_units x winsize_bins matrix.By default, bin_size=0.0002 and window_size=0.080, in seconds.'''
 		try:
-			print("CrossCorrelograms already computed.", len(self.CCG))
+			self.CCG = np.load(self.__dir__+"/CCGarray_win{}_bin{}.npy".format(window_size, bin_size))
+		except: # No CCG file has ever been saved with these window and bin values
+			pass
+
+		try:
+			print("CrossCorrelograms already computed.", len(self.CCG)) # If it has already been calculated in this session OR loaded two lines above
 			if again==True:
 				if input(" -- Compute again? Dial <anything> for yes, <enter> for no: "):
 					raise
@@ -516,11 +534,18 @@ class DataManager():
 
 
 			self.CCG = self.correlograms
+			np.save(self.__dir__+"/CCGarray_win{}_bin{}.npy".format(window_size, bin_size), self.CCG)
 
 		return self.CCG
 
 	def InterSI(self, bin_size=0.0005, window_size=0.2, normalize = True, again=False):
 		'''InterSI() -> .ISI: all interspike interval histograms in a list of the form [np.array([unit_idx1, ISIcounts1, ISIcounts2...]), ...]. By default, bin_size=0.0005 in seconds.'''
+		try:
+			self.ISI = np.load(self.__dir__+"/ISIarray_bin{}_win{}.npy".format(bin_size, window_size))
+		except: # No CCG file has ever been saved with these window and bin values
+			pass
+
+
 		try:
 			print("InterSpikeIntervals already computed.", len(self.ISI))
 			if again==True:
@@ -559,21 +584,22 @@ class DataManager():
 
 			bar.finish()
 			print("InterSpikeIntervals computed.\n")
+			np.save(self.__dir__+"/ISIarray_bin{}_win{}.npy".format(bin_size, window_size), self.ISI)
 
 		return self.ISI, self.ISIDic
 
-	def extractFeatures(self, featuresList=['MFR','CCG', 'ISI', 'WVF'],  bin_sizeCCG=0.001, window_sizeCCG=0.1, bin_sizeISI=0.0005, again=False):
+	def extractFeatures(self, featuresList=['MFR','CCG', 'ISI', 'WVF'],  bin_sizeCCG=0.0002, window_sizeCCG=0.1, bin_sizeISI=0.0005, again=False):
 		'''extractFeatures() -> .extractedFeatures, creates a numy array of shape (n_units, n_features) compatible with scikit-learn uniting/classifying.
 		.extractedFeatures[:,0]: MFR
-		.extractedFeatures[:,1]: 
-		.extractedFeatures[:,2]: 
-		.extractedFeatures[:,3]: 
-		.extractedFeatures[:,4]: 
-		.extractedFeatures[:,5]: 
-		.extractedFeatures[:,6]: 
-		.extractedFeatures[:,7]: 
-		.extractedFeatures[:,8]: 
-		.extractedFeatures[:,9]: '''
+		.extractedFeatures[:,1]: 1/CCG peak time
+		.extractedFeatures[:,2]: Area under the curve of the 1st fifth of autocorrelogram/total area under the curve of autocorrelogram
+		.extractedFeatures[:,3]: Area under the curve of the 2nd fifth of autocorrelogram/total area under the curve of autocorrelogram
+		.extractedFeatures[:,4]: Area under the curve of the 3rd fifth of autocorrelogram/total area under the curve of autocorrelogram
+		.extractedFeatures[:,5]: Area under the curve of the 4th fifth of autocorrelogram/total area under the curve of autocorrelogram
+		.extractedFeatures[:,6]: Area under the curve of the 5th fifth of autocorrelogram/total area under the curve of autocorrelogram
+		.extractedFeatures[:,7]: Mean of interspike intervals distribution
+		.extractedFeatures[:,8]: Variance of interspike intervals distribution
+		.extractedFeatures[:,9]: Skewness of interspike intervals distribution'''
 
 		features = []
 
@@ -669,7 +695,7 @@ class DataManager():
 
 		return self.extractedFeatures
 
-	def visualize(self, unitsList=None, featuresList=None, showMode=None, saveMode=True, bin_sizeIFR=0.003, bin_sizeCCG=0.001, window_sizeCCG=0.1, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False, mpl_style='classic'):
+	def visualize(self, unitsList=None, featuresList=None, showMode=None, saveMode=True, bin_sizeIFR=0.003, bin_sizeCCG=0.0002, window_sizeCCG=0.1, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False, mpl_style='classic'):
 		'''visualize() -> Visualization tool.
 		Argument1: list of units whose features need to be visualized (int or float). [unit1, unit2...]
 		Argument2: list of features to visualize (str). Can contain "IFR": Instantaneous Firing Rate, "MFR": Mean Firing Rate, "CCG": CrossCorreloGrams, "ISI" InterSpikeInterval, "WVF": weighted averaged templates.'''
@@ -827,7 +853,15 @@ class DataManager():
 			if "CCG" in featuresList:
 				if len(unitsList)>5:
 					print("/!\ Warning: Display of crosscorrelograms of more than 5 units may not be optimal. Try to plot your figure in several times.")
-				self.CrossCG(bin_size=bin_sizeCCG, window_size=window_sizeCCG, normalize = normalizeCCG, again=again)
+				
+				try:
+					assert int(window_sizeCCG/bin_sizeCCG)==int(len(self.CCG[0][0]))-1
+					self.CrossCG(bin_size=bin_sizeCCG, window_size=window_sizeCCG, normalize = normalizeCCG, again=again)
+				except:
+					print("/!\ Warning: Crosscorrelograms were previously calculated with a different binsize or window size \
+						than the one(s) you would like to plot the crosscorrelograms with. You can calculate the CCGs with these new values ({} for bins and {} for the window).".format(bin_sizeCCG, window_sizeCCG))
+					self.CrossCG(bin_size=bin_sizeCCG, window_size=window_sizeCCG, normalize = normalizeCCG, again=True)
+					
 				plotsxticks = np.arange(-window_sizeCCG*1000/2, window_sizeCCG*1000/2+bin_sizeCCG*1000, bin_sizeCCG*1000)
 
 				CCGDic_df = {} # Need to create a 3D dataset - panel from pandas. Made from dic of dataframes.
