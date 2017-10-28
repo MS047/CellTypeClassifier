@@ -34,7 +34,9 @@ import scipy.stats
 import scipy.io
 import pandas as pd
 import matplotlib
-import matplotlib.pyplot as plt
+matplotlib.use('TkAgg')
+from matplotlib import pyplot as plt
+from pylab import get_current_fig_manager
 #matplotlib.style.use('fivethirtyeight')
 #matplotlib.style.use('ggplot')
 matplotlib.style.use('classic')
@@ -395,10 +397,12 @@ class DataManager():
 
 	def MeanFR(self, again=False):
 		'''MeanFR() -> .MFR: Mean Firing rate, lists of n_units np arrays of the form [np.array([unit_idx1, MFR]), ...]'''
-		try:
-			self.MFR = np.load(self.__dir__+"/MFRarray.npy")
-		except: # No CCG file has ever been saved with these window and bin values
-			pass
+		self.attribute_spikeSamples_Times(again=again)
+		# try:
+		# 	self.MFR = np.load(self.__dir__+"/MFRarray.npy")
+		# 	self.MFRDic = {self.goodUnits[i]:self.MFR[i] for i in range(len(self.MFR))}
+		# except: # No CCG file has ever been saved with these window and bin values
+		# 	pass
 
 		try:
 			print("MFR already calculated. List length:", len(self.MFR))
@@ -406,7 +410,6 @@ class DataManager():
 				if input(" -- Calcul again? Dial <anything> for yes, <enter> for no: "):
 					raise
 		except:
-			self.attribute_spikeSamples_Times(again=again)
             #Approximate length of the whole recording, in seconds
 			recordLen = float(self.spike_times[-1])           
 			# Calculate MFR
@@ -443,6 +446,8 @@ class DataManager():
 
 	def CrossCG(self, bin_size=0.0002, window_size=0.1, symmetrize=True, normalize = True, again=False):
 		'''CCG() -> .CCG: all crossCorrelograms in a n_units x n_units x winsize_bins matrix.By default, bin_size=0.0002 and window_size=0.080, in seconds.'''
+		self.calcul_sptimes(again=again)
+		self.extract_cIds(again=again)
 		try:
 			self.CCG = np.load(self.__dir__+"/CCGarray_win{}_bin{}.npy".format(window_size, bin_size))
 		except: # No CCG file has ever been saved with these window and bin values
@@ -454,8 +459,6 @@ class DataManager():
 				if input(" -- Compute again? Dial <anything> for yes, <enter> for no: "):
 					raise
 		except:
-			self.calcul_sptimes(again=again)
-			self.extract_cIds(again=again)
 			assert self.sample_rate > 0.
 			assert np.all(np.diff(self.spike_times) >= 0), ("The spike times must be increasing.")
 			assert self.spike_samples.ndim == 1
@@ -540,19 +543,14 @@ class DataManager():
 
 	def InterSI(self, bin_size=0.0005, window_size=0.2, normalize = True, again=False):
 		'''InterSI() -> .ISI: all interspike interval histograms in a list of the form [np.array([unit_idx1, ISIcounts1, ISIcounts2...]), ...]. By default, bin_size=0.0005 in seconds.'''
-		try:
-			self.ISI = np.load(self.__dir__+"/ISIarray_bin{}_win{}.npy".format(bin_size, window_size))
-		except: # No CCG file has ever been saved with these window and bin values
-			pass
-
-
+		self.attribute_spikeSamples_Times(again=again)
+	
 		try:
 			print("InterSpikeIntervals already computed.", len(self.ISI))
 			if again==True:
 				if input(" -- Compute again? Dial <anything> for yes, <enter> for no: "):
 					raise
 		except:
-			self.attribute_spikeSamples_Times(again=again)
 			self.ISI = []
 			self.ISIDic = {}
 			self.ISIparams = []
@@ -692,7 +690,7 @@ class DataManager():
 		for unitIdx, unit in enumerate(self.usedUnits):
 			self.extractedFeatures[unitIdx] += np.array([feat[unit] for feat in features])
 
-
+		self.extractedFeaturesDF = pd.DataFrame(data=self.extractedFeatures, index=self.usedUnits, columns=["MFRf0", "CCGf0", "CCGf1", "CCGf2", "CCGf3", "CCGf4", "CCGf5", "ISIf0", "ISIf1", "ISIf2"])
 		return self.extractedFeatures
 
 	def visualize(self, unitsList=None, featuresList=None, showMode=None, saveMode=True, bin_sizeIFR=0.003, bin_sizeCCG=0.0002, window_sizeCCG=0.1, bin_sizeISI=0.0005, window_sizeISI=0.2, plotType='bar', normalizeCCG = True, again=False, mpl_style='classic'):
@@ -705,6 +703,9 @@ class DataManager():
 			featuresList=list(featuresList)
 
 		EXIT = False
+		figMFR, figIFR, figCCG, figISI, figWVF = plt.figure(),plt.figure(),plt.figure(),plt.figure(),plt.figure()
+		plt.close()
+
 		while 1:
 			self.extract_cIds(again=again)
 
@@ -767,6 +768,11 @@ class DataManager():
 			if EXIT==True:
 				if showMode=='all':
 					print("Features visualized.")
+					figMFR.canvas.manager.window.attributes('-topmost', 1)
+					figIFR.canvas.manager.window.attributes('-topmost', 1)
+					figCCG.canvas.manager.window.attributes('-topmost', 1)
+					figISI.canvas.manager.window.attributes('-topmost', 1)
+					figWVF.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				print("\nYou used XtraDataManager's visualization tool.\n")
@@ -797,6 +803,7 @@ class DataManager():
 				figMFR = axMFR.get_figure()
 
 				if showMode=='1':
+					figMFR.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
@@ -831,6 +838,7 @@ class DataManager():
 				figIFR = axIFR.get_figure()
 
 				if showMode=='1':
+					figIFR.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
@@ -950,6 +958,7 @@ class DataManager():
 
 
 				if showMode=='1':
+					figCCG.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
@@ -1012,6 +1021,7 @@ class DataManager():
 				figISI.tight_layout()
 
 				if showMode=='1':
+					figISI.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
@@ -1040,6 +1050,7 @@ class DataManager():
 				figWVF = axWVF.get_figure()
 
 				if showMode=='1':
+					figWVF.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
