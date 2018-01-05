@@ -164,6 +164,8 @@ class DataManager():
 			directory='/Users/maximebeau/Desktop/Science/5_Master_2/Internship/Data_Analysis/debugCTC'
 		os.chdir(directory)
 		self.__dir__ = directory
+		if not os.path.exists(self.__dir__+'/XtraDataManager/'):
+			os.makedirs(self.__dir__+'/XtraDataManager/')
 
 	def chdir(self, directory="/Volumes/DK_students1/2017-04-08"):
 		'''chdir() -> .__dir__: directory to seek for data and generate plots.'''
@@ -346,7 +348,7 @@ class DataManager():
 		'''InstFR() -> .IFR: Instantaneous Firing rate, lists of n_units np arrays of the form [[unit_idx1, IFR1, IFR2...IFRn], ...].
 		Binsize is in seconds.'''
 		try:
-			self.IFR = np.load(self.__dir__+"/IFRarray_bin{}_sd{}.npy".format(binsize, sd))
+			self.IFR = np.load(self.__dir__+"/XtraDataManager/IFRarray_bin{}_sd{}.npy".format(binsize, sd))
 		except: # No CCG file has ever been saved with these window and bin values
 			pass
 
@@ -391,7 +393,7 @@ class DataManager():
 			else:
 				self.IFR=self.IFRhist
 
-			np.save(self.__dir__+"/IFRarray_bin{}_sd{}.npy".format(binsize, sd), self.IFR)
+			np.save(self.__dir__+"/XtraDataManager/IFRarray_bin{}_sd{}.npy".format(binsize, sd), self.IFR)
 				
 		return self.IFR
 
@@ -399,7 +401,7 @@ class DataManager():
 		'''MeanFR() -> .MFR: Mean Firing rate, lists of n_units np arrays of the form [np.array([unit_idx1, MFR]), ...]'''
 		self.attribute_spikeSamples_Times(again=again)
 		# try:
-		# 	self.MFR = np.load(self.__dir__+"/MFRarray.npy")
+		# 	self.MFR = np.load(self.__dir__+"/XtraDataManager/MFRarray.npy")
 		# 	self.MFRDic = {self.goodUnits[i]:self.MFR[i] for i in range(len(self.MFR))}
 		# except: # No CCG file has ever been saved with these window and bin values
 		# 	pass
@@ -441,7 +443,7 @@ class DataManager():
 			bar.finish()
 			print("Mean firing rates calculated.\n")
 			self.MFR = np.asarray(self.MFR)
-			np.save(self.__dir__+"/MFRarray.npy", self.MFR)
+			np.save(self.__dir__+"/XtraDataManager/MFRarray.npy", self.MFR)
 		return self.MFR, self.MFRDic
 
 	def CrossCG(self, bin_size=0.0002, window_size=0.1, symmetrize=True, normalize = True, again=False):
@@ -449,7 +451,7 @@ class DataManager():
 		self.calcul_sptimes(again=again)
 		self.extract_cIds(again=again)
 		try:
-			self.CCG = np.load(self.__dir__+"/CCGarray_win{}_bin{}.npy".format(window_size, bin_size))
+			self.CCG = np.load(self.__dir__+"/XtraDataManager/CCGarray_win{}_bin{}.npy".format(window_size, bin_size))
 		except: # No CCG file has ever been saved with these window and bin values
 			pass
 
@@ -537,7 +539,7 @@ class DataManager():
 
 
 			self.CCG = self.correlograms
-			np.save(self.__dir__+"/CCGarray_win{}_bin{}.npy".format(window_size, bin_size), self.CCG)
+			np.save(self.__dir__+"/XtraDataManager/CCGarray_win{}_bin{}.npy".format(window_size, bin_size), self.CCG)
 
 		return self.CCG
 
@@ -582,7 +584,7 @@ class DataManager():
 
 			bar.finish()
 			print("InterSpikeIntervals computed.\n")
-			np.save(self.__dir__+"/ISIarray_bin{}_win{}.npy".format(bin_size, window_size), self.ISI)
+			np.save(self.__dir__+"/XtraDataManager/ISIarray_bin{}_win{}.npy".format(bin_size, window_size), self.ISI)
 
 		return self.ISI, self.ISIDic
 
@@ -703,8 +705,6 @@ class DataManager():
 			featuresList=list(featuresList)
 
 		EXIT = False
-		figMFR, figIFR, figCCG, figISI, figWVF = plt.figure(),plt.figure(),plt.figure(),plt.figure(),plt.figure()
-		plt.close()
 
 		while 1:
 			self.extract_cIds(again=again)
@@ -768,11 +768,6 @@ class DataManager():
 			if EXIT==True:
 				if showMode=='all':
 					print("Features visualized.")
-					figMFR.canvas.manager.window.attributes('-topmost', 1)
-					figIFR.canvas.manager.window.attributes('-topmost', 1)
-					figCCG.canvas.manager.window.attributes('-topmost', 1)
-					figISI.canvas.manager.window.attributes('-topmost', 1)
-					figWVF.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				print("\nYou used XtraDataManager's visualization tool.\n")
@@ -801,17 +796,17 @@ class DataManager():
 					width = p.get_width()
 					axMFR.annotate('~'+str(round(p.get_height(), 3)), (p.get_x()+(width/2), p.get_height() + heightShift), size = 8, ha="center")
 				figMFR = axMFR.get_figure()
+				figMFR.canvas.manager.window.attributes('-topmost', 1)
 
 				if showMode=='1':
-					figMFR.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
 					pass
 				if saveMode==True:
-					if not os.path.exists(self.__dir__+'/visMFRs'):
-						os.makedirs(self.__dir__+'/visMFRs')
-					figMFRpath = self.__dir__+'/visMFRs'+'/MFR'
+					if not os.path.exists(self.__dir__+'/XtraDataManager/visMFRs'):
+						os.makedirs(self.__dir__+'/XtraDataManager/visMFRs')
+					figMFRpath = self.__dir__+'/XtraDataManager/visMFRs'+'/MFR'
 					for i in unitsListStr:
 						figMFRpath+=', '
 						figMFRpath+=i
@@ -836,23 +831,24 @@ class DataManager():
 				axIFR.set_ylabel('Instantaneous Firing Rate (y*'+str(round(1./bin_sizeIFR, 3))+'Hz)', fontsize=6)
 				axIFR.tick_params(labelsize=6, color='k', direction='out')
 				figIFR = axIFR.get_figure()
+				figIFR.canvas.manager.window.attributes('-topmost', 1)
 
 				if showMode=='1':
-					figIFR.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
 					pass
 				if saveMode==True:
-					if not os.path.exists(self.__dir__+'/visIFRs'):
-						os.makedirs(self.__dir__+'/visIFRs')
-					figIFRpath = self.__dir__+'/visIFRs'+'/IFR'
+					if not os.path.exists(self.__dir__+'/XtraDataManager/visIFRs'):
+						os.makedirs(self.__dir__+'/XtraDataManager/visIFRs')
+					figIFRpath = self.__dir__+'/XtraDataManager/visIFRs'+'/IFR'
 					unitsListStr = [str(i) for i in unitsList]
 					for i in unitsListStr:
 						figIFRpath+=', '
 						figIFRpath+=i
 					figIFR.savefig(figIFRpath+'.eps')
 					figIFR.savefig(figIFRpath+'.png')
+
 				
 				self.dfIFR = dfIFR
 				EXIT=True
@@ -955,18 +951,17 @@ class DataManager():
 							CCGaxis[i][j].tick_params(labelsize=4, color='k', direction='out')
 							CCGaxis[i][j].set_title(str(x)+'-'+str(y),fontsize=8)
 				figCCG.tight_layout()
-
+				figCCG.canvas.manager.window.attributes('-topmost', 1)
 
 				if showMode=='1':
-					figCCG.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
 					pass
 				if saveMode==True:
-					if not os.path.exists(self.__dir__+'/visCCGs'):
-						os.makedirs(self.__dir__+'/visCCGs')
-					figCCGpath = self.__dir__+'/visCCGs'+'/CCG'
+					if not os.path.exists(self.__dir__+'/XtraDataManager/visCCGs'):
+						os.makedirs(self.__dir__+'/XtraDataManager/visCCGs')
+					figCCGpath = self.__dir__+'/XtraDataManager/visCCGs'+'/CCG'
 					unitsListStr = [str(i) for i in unitsList]
 					for i in unitsListStr:
 						figCCGpath+=', '
@@ -1019,17 +1014,17 @@ class DataManager():
 						ISIaxis[i].set_title(str(x),fontsize=12, fontweight='bold')
 						ISIaxis[i].tick_params(labelsize=6, color='k', direction='out')
 				figISI.tight_layout()
-
-				if showMode=='1':
-					figISI.canvas.manager.window.attributes('-topmost', 1)
+				figISI.canvas.manager.window.attributes('-topmost', 1)
+				
+				if showMode=='1':	
 					plt.show()
 					plt.close()
 				elif showMode=='all':
 					pass
 				if saveMode==True:
-					if not os.path.exists(self.__dir__+'/visISIs'):
-						os.makedirs(self.__dir__+'/visISIs')
-					figISIpath = self.__dir__+'/visISIs'+'/ISI'
+					if not os.path.exists(self.__dir__+'/XtraDataManager/visISIs'):
+						os.makedirs(self.__dir__+'/XtraDataManager/visISIs')
+					figISIpath = self.__dir__+'/XtraDataManager/visISIs'+'/ISI'
 					unitsListStr = [str(i) for i in unitsList]
 					for i in unitsListStr:
 						figISIpath+=', '
@@ -1048,17 +1043,17 @@ class DataManager():
 				axWVF.set_xlabel('Time samples (30kHz)', fontsize=10)
 				axWVF.tick_params(labelsize=6, color='k', direction='out')
 				figWVF = axWVF.get_figure()
+				figWVF.canvas.manager.window.attributes('-topmost', 1)
 
 				if showMode=='1':
-					figWVF.canvas.manager.window.attributes('-topmost', 1)
 					plt.show()
 					plt.close()
 				elif showMode=='all':
 					pass
 				if saveMode==True:
-					if not os.path.exists(self.__dir__+'/visWVFs'):
-						os.makedirs(self.__dir__+'/visWVFs')
-					figWVFpath = self.__dir__+'/visWVFs'+'/WVF'
+					if not os.path.exists(self.__dir__+'/XtraDataManager/visWVFs'):
+						os.makedirs(self.__dir__+'/XtraDataManager/visWVFs')
+					figWVFpath = self.__dir__+'/XtraDataManager/visWVFs'+'/WVF'
 					unitsListStr = [str(i) for i in unitsList]
 					for i in unitsListStr:
 						figWVFpath+=', '
@@ -1077,11 +1072,11 @@ class DataManager():
 		"nanUnits", "usedUnits", "spike_templates", "templates", "attributed_spikeSamples", "attributed_spikeTimes", 
 		"attributed_spikeTemplatesIdx", "attributed_spikeTemplates", "IFR", "MFR", "CCG", "ISI", "extractedFeatures"]):
 		'''save() -> saving a DataManager() instance. Argument: filename, has to be of the form "xxxxxxx.pkl".'''
-		if not os.path.exists(self.__dir__+'/save_DManager'):
-			os.makedirs(self.__dir__+'/save_DManager')
+		if not os.path.exists(self.__dir__+'/XtraDataManager/save_DManager'):
+			os.makedirs(self.__dir__+'/XtraDataManager/save_DManager')
 
 		if filename==None:
-			directory = self.__dir__+'/save_DManager/'+time.strftime("%Y.%m.%d-%H.%M")
+			directory = self.__dir__+'/XtraDataManager/save_DManager/'+time.strftime("%Y.%m.%d-%H.%M")
 			if not os.path.exists(directory):
 				os.makedirs(directory)
 			filename=directory+'/DataManager.pkl'

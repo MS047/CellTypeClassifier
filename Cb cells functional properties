@@ -1,0 +1,32 @@
+PCs fire around 70Hz, glutamatergic CNCs around
+20Hz, some GABAergic CNCs around 5Hz, granule cell around 2Hz
+
+PURKINJE CELLS
+- MFR 60-100 Hz
+- CCG : very regular (Gao, Lena et al., 2012)
+CCG peak : 200-500Hz
+- WVF : very deep
+
+MOLECULAR LAYER INTERNEURONS
+Jörntell et al., 2010
+- MFR : 20 Hz (ISI histogram)
+- CCG : quite regular
+CCG peak : <100Hz
+
+GRANULE CELLS
+Jörntell et al., 2006
+- MFR : 2Hz
+- CCG : bursting, low baseline FR
+CCG peak : >200Hz
+
+DCN CELLS 
+Canto et al., 2016 : whole cell properties of Cerebellar Nuclei Neurons in vivo
+- MFR : 20 to 60 Hz, different cell types
+- Regular, mirror to PKJ activity (time-locked spiking, Raman 2012)
+<- differentiated from MLI/PKJ thanks to depth (phy)
+dk50 : undr channel 80
+dk68 : 
+
+GOLGI CELLS
+- MFR : 9 +/- 5 Hz (Kanichay et al., 2008)
+- CCG : Gao, Lena et al., 2012
