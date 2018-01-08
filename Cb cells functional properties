@@ -24,8 +24,8 @@ Canto et al., 2016 : whole cell properties of Cerebellar Nuclei Neurons in vivo
 - MFR : 20 to 60 Hz, different cell types
 - Regular, mirror to PKJ activity (time-locked spiking, Raman 2012)
 <- differentiated from MLI/PKJ thanks to depth (phy)
-dk50 : undr channel 80
-dk68 : 
+dk50 : under channel 80
+dk68 : under channel 100
 
 GOLGI CELLS
 - MFR : 9 +/- 5 Hz (Kanichay et al., 2008)
