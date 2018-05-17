@@ -1,9 +1,21 @@
-					          ---------- XraDataManager ----------
+# XtraDataManager
 
 
 A tool to assist large-scale extracellular data processing. Manager of extracellular data curated by Phy.
 
 Phy: https://github.com/kwikteam/phy (C. Rossant, Kwikteam)
+
+### XtraDataManager improvement tasks list
+
+- [ ] Make the data load process more flexible:
+-- [ ] embed the data load function in class distinct from DataManager
+-- [ ] Make the cluster_group(s).t/csv import tolerant to file name variation
+-- [ ] Eventually adapt to mountian sort output
+
+- [ ] Process waveforms:
+
+- [ ] Make a GUI:
+![GUI idea](https://image.noelshack.com/fichiers/2018/20/4/1526581613-xtradatamanagerguiproject.png)
 
 
 Circuit neuroscience is based on the study of interactions between various cell types within systems. This requires access to the activity of populations of neurons and clear identification of their cell types.  Extracellular recording with silicon probes is an adapted technique for this purpose. Nevertheless, cell type identification from these recordings raises many issues. First of all, no morphological information about the recorded cells is available. The only way the experimentalist can identify cell types is by inferring them from functional information — the spiking activity of units —. Determining how to extract relevant features from raw spike trains to distinguish cell types is not an easy task. Secondly, new generation of silicon probes such as Neuropixels allows for sampling not tens but hundreds of units simultaneously. This makes the traditional manual identification of cell types quite fastidious for the experimentalist. 
