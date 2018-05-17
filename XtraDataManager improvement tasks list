@@ -1,0 +1,11 @@
+### XtraDataManager improvement tasks list
+
+- [ ] Make the data load process more flexible:
+-- [ ] embed the data load function in class distinct from DataManager
+-- [ ] Make the cluster_group(s).t/csv import tolerant to file name variation
+-- [ ] Eventually adapt to mountian sort output
+
+- [ ] Process waveforms:
+
+- [ ] Make a GUI:
+![GUI idea](https://image.noelshack.com/fichiers/2018/20/4/1526581613-xtradatamanagerguiproject.png)
